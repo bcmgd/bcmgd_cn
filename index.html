@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>首页 | 编程猫怪盗の小站</title>
+<link rel="icon" href="me.jpg" type="image/jpeg">
+<style>
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: system-ui, "微软雅黑", sans-serif;
+}
+html{
+    scroll-behavior: smooth;
+}
+body{
+    background-color: #040406;
+    color: #e6e6f0;
+}
+/* 滚动动画 */
+.scroll-animate{
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.scroll-animate.active{
+    opacity: 1;
+    transform: translateY(0);
+}
+/* 导航栏 */
+nav{
+    width: 100%;
+    position: fixed;
+    top: 0;
+    padding: 20px 6%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(14px);
+    background: rgba(4,4,6,0.85);
+    border-bottom: 1px solid #12121a;
+    z-index: 999;
+}
+.logo{
+    font-size: 24px;
+    font-weight: bold;
+    background: linear-gradient(90deg,#60a5fa,#c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transition: filter 0.3s ease;
+}
+.logo:hover{
+    filter: drop-shadow(0 0 8px rgba(192,132,252,0.4));
+}
+.nav-menu{
+    display: flex;
+    gap: 28px;
+}
+.nav-menu a{
+    color: #a0a0c2;
+    text-decoration: none;
+    font-size: 15px;
+    transition: 0.3s;
+}
+.nav-menu a:hover{
+    color: #c084fc;
+}
+/* 汉堡按钮 */
+.hamburger{
+    display: none;
+    font-size: 28px;
+    color: #e6e6f0;
+    cursor: pointer;
+}
+/* 首页全屏区域 */
+.hero{
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 16px;
+    background: radial-gradient(circle at center, #0c0c18 0%, #040406 78%);
+}
+.hero h1{
+    font-size: 50px;
+    margin-bottom: 16px;
+}
+.hero h1 span{
+    background: linear-gradient(90deg,#60a5fa,#c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.hero h3{
+    font-size: 20px;
+    font-weight: 400;
+    color: #8282a3;
+    margin-bottom: 24px;
+}
+.hero p{
+    max-width: 580px;
+    line-height: 1.8;
+    color: #9090b2;
+    font-size: 16px;
+    margin-bottom: 38px;
+}
+.btn-wrap a{
+    display: inline-block;
+    text-decoration: none;
+    padding: 13px 34px;
+    border-radius: 999px;
+    font-size: 15px;
+    margin: 0 10px;
+    transition: all 0.3s ease;
+}
+.btn-main{
+    background: linear-gradient(90deg,#60a5fa,#c084fc);
+    color: #fff;
+}
+.btn-main:hover{
+    transform: translateY(-4px);
+    box-shadow: 0 8px 26px rgba(192,132,252,0.22);
+}
+.btn-border{
+    border: 1px solid #60a5fa;
+    color: #c084fc;
+    background: transparent;
+}
+.btn-border:hover{
+    background: rgba(96,165,250,0.08);
+    transform: translateY(-4px);
+}
+/* 通用区块 */
+section{
+    padding: 100px 6%;
+}
+.section-title{
+    text-align: center;
+    margin-bottom: 65px;
+}
+.section-title h2{
+    font-size: 34px;
+    margin-bottom: 12px;
+}
+.section-title h2 span{
+    background: linear-gradient(90deg,#60a5fa,#c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.section-title p{
+    color: #707090;
+    font-size: 15px;
+}
+/* 关于我 */
+.about-content{
+    max-width: 1100px;
+    margin: 0 auto;
+}
+.about-content p{
+    line-height: 1.9;
+    color: #9090b2;
+    margin-bottom: 18px;
+    font-size: 16px;
+    text-align: center;
+}
+/* 爱好板块 */
+#hobby{
+    background-color: #060609;
+}
+.hobby-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px,1fr));
+    gap: 26px;
+    max-width: 1100px;
+    margin:0 auto;
+}
+.hobby-card{
+    background: #0d0d14;
+    border: 1px solid #181826;
+    border-radius: 16px;
+    padding: 36px 26px;
+    transition:0.3s;
+}
+.hobby-card:hover{
+    border-color:#c084fc;
+    transform: translateY(-6px);
+}
+.hobby-card h4{
+    font-size:21px;
+    margin-bottom:14px;
+    color:#e6e6f0;
+}
+.hobby-card p{
+    color:#8282a3;
+    line-height:1.7;
+    font-size:14px;
+}
+/* 站点链接区域 */
+#links{
+    background-color: #060609;
+}
+.link-box{
+    max-width:1000px;
+    margin:0 auto;
+}
+.link-item{
+    background: #0d0d14;
+    border:1px solid #181826;
+    border-radius:14px;
+    padding:22px 28px;
+    margin-bottom:20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    transition:0.3s;
+}
+.link-item:hover{
+    border-color:#c084fc;
+}
+.link-item a{
+    color:#60a5fa;
+    text-decoration:none;
+}
+.link-item a:hover{
+    color:#c084fc;
+}
+/* 页脚 */
+footer{
+    text-align:center;
+    padding:30px;
+    border-top:1px solid #12121a;
+    color:#505070;
+    font-size:14px;
+}
+/* 移动端适配 */
+@media (max-width:768px){
+    .nav-menu{
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: rgba(4,4,6,0.95);
+        flex-direction: column;
+        padding: 20px 6%;
+        gap: 16px;
+        display: none;
+    }
+    .nav-menu.show{
+        display: flex;
+    }
+    .hamburger{
+        display: block;
+    }
+    .hero h1{
+        font-size:36px;
+    }
+}
+</style>
+</head>
+<body>
+<!--导航栏-->
+<nav>
+    <div class="logo">编程猫怪盗の小站</div>
+    <div class="nav-menu">
+        <a href="./index.html">首页</a>
+        <a href="./projects/index.html">项目作品</a>
+        <a href="./friends/index.html">友情链接</a>
+    </div>
+    <div class="hamburger" id="menuBtn">≡</div>
+</nav>
+
+<!--首页主视觉-->
+<section class="hero" id="home">
+    <h1>你好！我是<span>编程猫怪盗</span></h1>
+    <h3>小学生 | 自学代码 | 视频剪辑 | B站UP主</h3>
+    <p>只有十几岁，意气风发，喜欢编程剪辑发B站，有GitHub，会Scratch、Python和C++，最近在学习Godot游戏引擎，欢迎访问我的各个平台。</p>
+    <div class="btn-wrap">
+        <a href="#hobby" class="btn-main">查看我的爱好</a>
+        <a href="#links" class="btn-border">直达平台链接</a>
+    </div>
+</section>
+
+<!--关于我板块-->
+<section id="about">
+    <div class="section-title scroll-animate">
+        <h2>关于<span>编程猫怪盗</span></h2>
+        <p>一名热爱技术的小学生</p>
+    </div>
+    <div class="about-content scroll-animate">
+        <p>我是一名小学生，成绩不错，网名编程猫怪盗，课余时间投入编程和剪辑，喜欢VibeCoding，这个网站就是AI写的。</p>
+        <p>我在2025年的时候开始做B站号 编程猫怪盗，目前已经有1000左右粉丝了，最近想发几个教程。</p>
+        <p>我有两个徒弟，布丁和秋风。我教他们编程、做网站，他们的网站和其他同好小伙伴站点都收录在友链页面里。</p>
+    </div>
+</section>
+
+<!--爱好板块-->
+<section id="hobby">
+    <div class="section-title scroll-animate">
+        <h2>我的<span>三大爱好</span></h2>
+        <p>编程开发 & 视频剪辑 & 交流分享</p>
+    </div>
+    <div class="hobby-grid">
+        <div class="hobby-card scroll-animate">
+            <h4>编程开发</h4>
+            <p>学习HTML、CSS制作网页，维护GitHub仓库，编写实用小工具，搭建个人站点，持续练习代码。</p>
+        </div>
+        <div class="hobby-card scroll-animate">
+            <h4>视频剪辑</h4>
+            <p>录制日常学习和编程日常，制作B站原创视频，熟练完成转场、字幕、调色等剪辑工作。</p>
+        </div>
+        <div class="hobby-card scroll-animate">
+            <h4>交流分享</h4>
+            <p>和徒弟以及各路技术爱好者互换友链，发布自己的学习作品，互相进步共同成长。</p>
+        </div>
+    </div>
+</section>
+
+<!--站点链接区域-->
+<section id="links">
+    <div class="section-title scroll-animate">
+        <h2>站点<span>导航链接</span></h2>
+        <p>我的平台入口以及全部友链集合</p>
+    </div>
+    <div class="link-box">
+        <div class="link-item scroll-animate">
+            <span>我的B站主页</span>
+            <a href="https://space.bilibili.com/2004864972" target="_blank">https://space.bilibili.com/2004864972</a>
+        </div>
+        <div class="link-item scroll-animate">
+            <span>我的抖音主页</span>
+            <a href="https://www.douyin.com/user/MS4wLjABAAAAYQT-RJcklKIRt5QmS_09VEXi8WjyyZUGCZjDtDEggus" target="_blank">https://www.douyin.com/user/MS4wL...</a>
+        </div>
+        <div class="link-item scroll-animate">
+            <span>我的GitHub主页</span>
+            <a href="https://github.com/bcmgd" target="_blank">https://github.com/bcmgd</a>
+        </div>
+        <div class="link-item scroll-animate">
+            <span>全部友情链接</span>
+            <a href="./friends/index.html">前往友链页面</a>
+        </div>
+    </div>
+</section>
+
+<!--页脚-->
+<footer>
+© 2026 编程猫怪盗の小站 | 深黑暗黑风格设计
+</footer>
+
+<!--滚动动画+汉堡菜单JS-->
+<script>
+// 汉堡菜单切换
+const menuBtn = document.getElementById('menuBtn');
+const navMenu = document.querySelector('.nav-menu');
+menuBtn.addEventListener('click', ()=>{
+    navMenu.classList.toggle('show');
+})
+// 滚动动画
+const animateItems = document.querySelectorAll('.scroll-animate');
+window.addEventListener('scroll', ()=>{
+    animateItems.forEach(item=>{
+        const itemTop = item.getBoundingClientRect().top;
+        const triggerPoint = window.innerHeight * 0.85;
+        if(itemTop < triggerPoint){
+            item.classList.add('active');
+        }
+    })
+})
+window.dispatchEvent(new Event('scroll'));
+</script>
+</body>
+</html>

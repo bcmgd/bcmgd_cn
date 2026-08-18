@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🔫 消灭豆包</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+        body { overflow:hidden; background:#0a0a1a; font-family:'Segoe UI',sans-serif; cursor:default; }
+        canvas { display:block; }
+
+        #hud { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10; }
+        #topBar { display:flex; justify-content:space-between; align-items:center; padding:18px 32px; background:linear-gradient(180deg,rgba(0,0,0,0.7) 0%,transparent 100%); color:#fff; font-weight:600; text-shadow:0 2px 12px rgba(0,0,0,0.8); pointer-events:none; }
+        #gameTitle { font-size:22px; letter-spacing:2px; background:linear-gradient(135deg,#ff6b6b,#ffa94d); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-weight:800; }
+        #gameTitle span { font-size:16px; -webkit-text-fill-color:#fff; opacity:0.6; }
+        #scoreDisplay { font-size:26px; background:rgba(255,255,255,0.08); padding:6px 22px; border-radius:40px; border:1px solid rgba(255,255,255,0.12); backdrop-filter:blur(6px); }
+        #scoreDisplay .score-num { color:#ffd93d; font-size:32px; margin-left:6px; }
+        #livesDisplay { font-size:22px; letter-spacing:4px; color:#ff4757; text-shadow:0 0 20px rgba(255,71,87,0.3); }
+        #speedDisplay { display:flex; align-items:center; gap:6px; font-size:18px; color:#4D6BFE; background:rgba(77,107,254,0.12); padding:4px 14px; border-radius:20px; border:1px solid rgba(77,107,254,0.2); }
+        #speedDisplay .speed-dot { display:inline-block; width:12px; height:12px; border-radius:50%; background:#4D6BFE; opacity:0.2; transition:opacity 0.2s; }
+        #speedDisplay .speed-dot.active { opacity:1; box-shadow:0 0 12px #4D6BFE; }
+
+        #crosshair { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:20; opacity:0.8; }
+        #crosshair::before, #crosshair::after { content:''; position:absolute; background:rgba(0,255,255,0.85); border-radius:2px; }
+        #crosshair::before { width:2px; height:22px; top:-11px; left:-1px; box-shadow:0 22px 0 0 rgba(0,255,255,0.85); }
+        #crosshair::after { width:22px; height:2px; top:-1px; left:-11px; box-shadow:22px 0 0 0 rgba(0,255,255,0.85); }
+        #crosshair .dot { position:absolute; width:4px; height:4px; background:rgba(255,50,50,0.9); border-radius:50%; top:-2px; left:-2px; }
+
+        #shootFlash { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5; background:rgba(255,255,255,0.15); opacity:0; transition:opacity 0.05s; }
+        #shootFlash.active { opacity:1; transition:opacity 0s; }
+
+        #controlsHint { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); color:rgba(255,255,255,0.5); font-size:14px; letter-spacing:1px; background:rgba(0,0,0,0.5); padding:10px 28px; border-radius:40px; backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.06); pointer-events:none; z-index:15; text-align:center; font-weight:400; }
+        #controlsHint kbd { background:rgba(255,255,255,0.12); padding:2px 10px; border-radius:4px; font-family:inherit; color:#fff; margin:0 2px; font-size:13px; border:1px solid rgba(255,255,255,0.08); }
+
+        #gunOverlay { position:fixed; bottom:2px; right:2px; width:360px; height:auto; pointer-events:none; z-index:30; filter:drop-shadow(0 8px 24px rgba(0,0,0,0.6)); transform-origin:bottom right; transition:transform 0.08s ease-out; }
+        #gunOverlay img { display:block; width:100%; height:auto; image-rendering:auto; -webkit-user-drag:none; }
+        #gunOverlay.shoot { transform:translate(6px,8px) scale(0.95); transition:transform 0.04s; }
+
+        #loadingOverlay { position:fixed; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#0a0a1a; z-index:200; pointer-events:none; transition:opacity 0.8s ease; }
+        #loadingOverlay.hidden { opacity:0; pointer-events:none; }
+        #loadingOverlay .loader { width:60px; height:60px; border:4px solid rgba(255,255,255,0.1); border-top-color:#ff6b6b; border-radius:50%; animation:spin 0.8s linear infinite; }
+        #loadingOverlay p { color:rgba(255,255,255,0.6); font-size:18px; margin-top:20px; letter-spacing:2px; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+
+        #pauseOverlay { position:fixed; top:0; left:0; width:100%; height:100%; display:none; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); z-index:90; pointer-events:auto; }
+        #pauseOverlay.show { display:flex; }
+        #pauseOverlay .pause-title { font-size:56px; font-weight:900; color:#fff; letter-spacing:4px; text-shadow:0 0 40px rgba(255,255,255,0.1); }
+        #pauseOverlay .pause-sub { color:rgba(255,255,255,0.4); font-size:16px; margin-top:12px; letter-spacing:2px; }
+
+        .overlay { position:fixed; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); backdrop-filter:blur(12px); z-index:100; pointer-events:auto; transition:opacity 0.5s ease; padding:20px; }
+        .overlay.hidden { opacity:0; pointer-events:none; display:none !important; }
+        .overlay .title { font-size:64px; font-weight:900; background:linear-gradient(135deg,#ff6b6b,#ffa94d,#ffd93d); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; letter-spacing:4px; }
+        .overlay .subtitle { color:rgba(255,255,255,0.6); font-size:18px; margin-bottom:30px; letter-spacing:2px; text-align:center; max-width:600px; }
+        .overlay .emoji-big { font-size:80px; margin-bottom:16px; -webkit-text-fill-color:initial; }
+        .overlay .final-score { color:#fff; font-size:28px; margin:12px 0 8px; background:rgba(255,255,255,0.06); padding:12px 40px; border-radius:20px; border:1px solid rgba(255,255,255,0.08); }
+        .overlay .final-score span { color:#ffd93d; font-size:40px; font-weight:700; }
+        .overlay .highest-score { color:rgba(255,255,255,0.5); font-size:18px; margin-top:4px; }
+
+        .btn-group { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; margin-top:12px; }
+        .btn { pointer-events:auto; padding:16px 52px; font-size:20px; font-weight:700; border:none; border-radius:60px; color:#fff; cursor:pointer; transition:transform 0.15s, box-shadow 0.2s; letter-spacing:2px; }
+        .btn:hover { transform:scale(1.04); }
+        .btn:active { transform:scale(0.96); }
+        .btn-primary { background:linear-gradient(135deg,#ff6b6b,#ee5a24); box-shadow:0 8px 32px rgba(238,90,36,0.3); }
+        .btn-primary:hover { box-shadow:0 12px 40px rgba(238,90,36,0.5); }
+        .btn-secondary { background:rgba(255,255,255,0.12); box-shadow:none; border:1px solid rgba(255,255,255,0.15); }
+        .btn-secondary:hover { background:rgba(255,255,255,0.2); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+
+        .tutorial-content {
+            color: #fff;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            text-align: left;
+            line-height: 1.8;
+            font-size: 16px;
+            background: rgba(0,0,0,0.4);
+            padding: 24px 32px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.3) transparent;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .tutorial-content::-webkit-scrollbar { width:6px; }
+        .tutorial-content::-webkit-scrollbar-track { background:transparent; }
+        .tutorial-content::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.3); border-radius:3px; }
+        .tutorial-content .highlight-doubao { color:#ffd93d; font-weight:600; }
+        .tutorial-content .highlight-deepseek { color:#4D6BFE; font-weight:600; }
+
+        #hitMarker { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:18; font-size:40px; opacity:0; transition:opacity 0.1s; text-shadow:0 0 40px rgba(255,217,61,0.6); font-weight:900; }
+        #hitMarker.show { opacity:1; transition:opacity 0s; }
+
+        #newRecordMsg {
+            color: #ffd93d;
+            font-size: 28px;
+            font-weight: 700;
+            text-shadow: 0 0 30px rgba(255,217,61,0.5);
+            margin-top: 6px;
+            display: none;
+        }
+        #newRecordMsg.show { display: block; }
+
+        @media (max-width:768px) {
+            #topBar { padding:12px 16px; flex-wrap:wrap; gap:8px; }
+            #gameTitle { font-size:16px; }
+            #scoreDisplay { font-size:18px; padding:4px 14px; }
+            #scoreDisplay .score-num { font-size:24px; }
+            .overlay .title { font-size:38px; }
+            .overlay .emoji-big { font-size:50px; }
+            .btn { padding:14px 32px; font-size:17px; }
+            #controlsHint { font-size:12px; padding:8px 16px; bottom:16px; width:90%; }
+            #livesDisplay { font-size:18px; }
+            #gunOverlay { width:220px; bottom:1px; right:1px; }
+            .tutorial-content { font-size:14px; padding:16px 20px; max-height:70vh; }
+            .btn-group { gap:10px; }
+            #speedDisplay { font-size:14px; padding:2px 10px; }
+            #speedDisplay .speed-dot { width:8px; height:8px; }
+            #pauseOverlay .pause-title { font-size:36px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== 加载界面 ===== -->
+    <div id="loadingOverlay">
+        <div class="loader"></div>
+        <p>⏳ 加载中...</p>
+    </div>
+
+    <!-- ===== 暂停覆盖层 ===== -->
+    <div id="pauseOverlay">
+        <div class="pause-title">⏸ 暂停</div>
+        <div class="pause-sub">按 <kbd style="background:rgba(255,255,255,0.15);padding:2px 12px;border-radius:4px;color:#fff;">ESC</kbd> 或点击画布继续</div>
+    </div>
+
+    <!-- ===== HUD ===== -->
+    <div id="hud">
+        <div id="topBar">
+            <div id="gameTitle">🎯 消灭豆包</div>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div id="speedDisplay">
+                    ⚡
+                    <span class="speed-dot" id="speedDot0"></span>
+                    <span class="speed-dot" id="speedDot1"></span>
+                    <span class="speed-dot" id="speedDot2"></span>
+                    <span style="margin-left:2px;font-size:13px;opacity:0.6;" id="speedLabel">0</span>
+                </div>
+                <div id="livesDisplay">❤️ ❤️ ❤️</div>
+                <div id="scoreDisplay">🏆 <span class="score-num" id="scoreText">0</span></div>
+            </div>
+        </div>
+        <div id="crosshair"><div class="dot"></div></div>
+        <div id="hitMarker">✦</div>
+        <div id="shootFlash"></div>
+    </div>
+
+    <!-- ===== 持枪 ===== -->
+    <div id="gunOverlay">
+        <img id="gunImg" src="static/gun.png" alt="持枪" />
+    </div>
+
+    <!-- ===== 底部提示 ===== -->
+    <div id="controlsHint">
+        <kbd>🖱 点击</kbd> 锁定鼠标 &nbsp;·&nbsp; <kbd>W A S D</kbd> 移动 &nbsp;·&nbsp; <kbd>左键</kbd> 射击 &nbsp;·&nbsp; <kbd>Shift</kbd> 疾跑（消耗速度，最多2秒） &nbsp;·&nbsp; <kbd>ESC</kbd> 暂停
+    </div>
+
+    <!-- ===== 开始界面 ===== -->
+    <div class="overlay" id="startOverlay">
+        <div class="emoji-big">🔫</div>
+        <div class="title">消灭豆包</div>
+        <div class="subtitle">💥 追捕稀有的 <span style="color:#4D6BFE;font-weight:700;">DeepSeek</span> 精英怪物！<br>击败它有机会获得 <span style="color:#4D6BFE;">速度</span>，按 <kbd style="background:rgba(255,255,255,0.2);padding:0 8px;border-radius:4px;">Shift</kbd> 疾跑（消耗速度，最多2秒）<br>🏆 历史最高分：<span id="startHighest">0</span></div>
+        <div class="btn-group">
+            <button class="btn btn-primary" id="startBtn">🎮 开始游戏</button>
+            <button class="btn btn-secondary" id="tutorialBtn">📖 游戏教程</button>
+        </div>
+        <div style="color:rgba(255,255,255,0.3);font-size:13px;margin-top:18px;letter-spacing:1px;">
+            WASD 移动 · 鼠标瞄准 · 左键射击
+        </div>
+    </div>
+
+    <!-- ===== 教程界面 ===== -->
+    <div class="overlay hidden" id="tutorialOverlay">
+        <div class="emoji-big">📖</div>
+        <div class="title" style="font-size:42px;">游戏教程</div>
+        <div class="tutorial-content">
+            <p>🎯 <strong>目标</strong>：消灭怪物，获得高分！</p>
+            <p style="margin-top:8px;">🟡 <span class="highlight-doubao">豆包</span>：普通怪物，+10分</p>
+            <p>🔵 <span class="highlight-deepseek">DeepSeek</span>：<strong>稀有精英</strong>！出现概率 1:5，速度更快，+30分，60%概率获得1格速度</p>
+            <p style="margin-top:8px;">⚡ <strong>速度系统</strong>：共3格，击败DeepSeek有60%概率获得1格</p>
+            <p style="margin-top:8px;">🏃 <strong>疾跑</strong>：按住 <kbd style="background:rgba(255,255,255,0.15);padding:0 8px;border-radius:4px;">Shift</kbd> 消耗速度格加速移动，<strong>每0.5秒消耗1格，最多持续2秒</strong></p>
+            <p style="margin-top:8px;">❤️ 生命值：被怪物碰到会失去一条命，全部失去则游戏结束</p>
+            <p style="margin-top:8px;">⛔ 边缘尖刺：不可穿过（不扣血）</p>
+            <p style="margin-top:8px;">🏆 历史最高分：本地保存，游戏结束时自动判定更新</p>
+            <p style="margin-top:8px;">⏸️ 暂停：失去鼠标锁定（按ESC或点击其他窗口）自动暂停，点击画布恢复</p>
+            <p style="margin-top:8px;font-size:14px;color:rgba(255,255,255,0.5);">💡 提示：DeepSeek怪物身上有蓝色光晕，更容易辨认</p>
+            <p style="margin-top:8px;font-size:14px;color:rgba(255,255,255,0.3);">🖱️ 滚动或中键拖拽查看全部，底部有返回按钮</p>
+            <div class="btn-group" style="margin-top:10px; padding-bottom: 8px;">
+                <button class="btn btn-primary" id="tutorialBackBtn">🔙 返回</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 结束界面 ===== -->
+    <div class="overlay hidden" id="gameOverOverlay">
+        <div class="emoji-big">💀</div>
+        <div class="title" style="font-size:48px;">游戏结束</div>
+        <div class="final-score">得分 &nbsp; <span id="finalScore">0</span></div>
+        <div class="highest-score">🏆 历史最高：<span id="finalHighest">0</span></div>
+        <div id="newRecordMsg">🎉 新纪录！</div>
+        <div style="color:rgba(255,255,255,0.4);font-size:16px;margin-bottom:6px;" id="finalMsg">豆包大军把你包围了！</div>
+        <div class="btn-group">
+            <button class="btn btn-primary" id="restartBtn">🔄 再来一局</button>
+        </div>
+    </div>
+
+    <!-- ===== Three.js ===== -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // ============================================================
+        // DOM 引用
+        // ============================================================
+        var scoreText = document.getElementById('scoreText');
+        var livesDisplay = document.getElementById('livesDisplay');
+        var hitMarker = document.getElementById('hitMarker');
+        var shootFlash = document.getElementById('shootFlash');
+        var startOverlay = document.getElementById('startOverlay');
+        var tutorialOverlay = document.getElementById('tutorialOverlay');
+        var gameOverOverlay = document.getElementById('gameOverOverlay');
+        var finalScore = document.getElementById('finalScore');
+        var finalHighest = document.getElementById('finalHighest');
+        var finalMsg = document.getElementById('finalMsg');
+        var newRecordMsg = document.getElementById('newRecordMsg');
+        var startHighest = document.getElementById('startHighest');
+        var startBtn = document.getElementById('startBtn');
+        var tutorialBtn = document.getElementById('tutorialBtn');
+        var tutorialBackBtn = document.getElementById('tutorialBackBtn');
+        var restartBtn = document.getElementById('restartBtn');
+        var controlsHint = document.getElementById('controlsHint');
+        var gunOverlay = document.getElementById('gunOverlay');
+        var gunImg = document.getElementById('gunImg');
+        var loadingOverlay = document.getElementById('loadingOverlay');
+        var pauseOverlay = document.getElementById('pauseOverlay');
+        var speedDots = [
+            document.getElementById('speedDot0'),
+            document.getElementById('speedDot1'),
+            document.getElementById('speedDot2')
+        ];
+        var speedLabel = document.getElementById('speedLabel');
+
+        // ============================================================
+        // 游戏配置
+        // ============================================================
+        var CONFIG = {
+            playerHeight: 1.7,
+            moveSpeed: 4.5,
+            sprintMultiplier: 1.8,
+            mouseSensitivity: 0.002,
+            monsterSpawnInterval: 1.2,
+            monsterMaxCount: 18,
+            doubaoSpeed: 1.8,
+            deepseekSpeed: 3.5,
+            monsterSize: 1.0,
+            spawnDistanceMin: 12,
+            spawnDistanceMax: 35,
+            shootCooldown: 0.18,
+            hitDistance: 50,
+            gameOverDistance: 1.6,
+            maxLives: 3,
+            deepseekSpawnRate: 6,
+            worldRadius: 38,
+            maxSpeedLevel: 3,
+            speedGainChance: 0.6,
+            sprintConsumeInterval: 0.5,
+            sprintMaxDuration: 2.0,
+        };
+
+        // ============================================================
+        // 游戏状态
+        // ============================================================
+        var state = {
+            score: 0,
+            lives: CONFIG.maxLives,
+            isGameOver: false,
+            isPlaying: false,
+            isPointerLocked: false,
+            isPaused: false,
+            monsters: [],
+            spawnTimer: 0,
+            shootCooldownTimer: 0,
+            speedLevel: 0,
+            isSprinting: false,
+            sprintTimer: 0,
+            sprintConsumeAccum: 0,
+        };
+
+        // ============================================================
+        // 历史最高分
+        // ============================================================
+        var highestScore = 0;
+
+        function loadHighestScore() {
+            try {
+                var stored = localStorage.getItem('doubao_highest');
+                if (stored) highestScore = parseInt(stored, 10) || 0;
+            } catch(e) { highestScore = 0; }
+            startHighest.textContent = highestScore;
+        }
+
+        function updateHighestScore(score) {
+            if (score > highestScore) {
+                highestScore = score;
+                try {
+                    localStorage.setItem('doubao_highest', String(highestScore));
+                } catch(e) {}
+                return true;
+            }
+            return false;
+        }
+
+        // ============================================================
+        // Three.js 初始化
+        // ============================================================
+        var scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a2a3a);
+        scene.fog = new THREE.Fog(0x1a2a3a, 30, 55);
+
+        var camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, CONFIG.playerHeight, 0);
+        camera.lookAt(0, CONFIG.playerHeight, -5);
+
+        var renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.body.prepend(renderer.domElement);
+
+        // ============================================================
+        // 光照
+        // ============================================================
+        var ambientLight = new THREE.AmbientLight(0x8899bb, 0.4);
+        scene.add(ambientLight);
+
+        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.8);
+        dirLight.position.set(20, 30, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 60;
+        dirLight.shadow.camera.left = -30;
+        dirLight.shadow.camera.right = 30;
+        dirLight.shadow.camera.top = 30;
+        dirLight.shadow.camera.bottom = -30;
+        scene.add(dirLight);
+
+        var fillLight = new THREE.DirectionalLight(0x4488ff, 0.4);
+        fillLight.position.set(-10, 15, -20);
+        scene.add(fillLight);
+
+        var hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x3a2a1a, 0.6);
+        scene.add(hemiLight);
+
+        // ============================================================
+        // 地面 & 边界
+        // ============================================================
+        var groundGeo = new THREE.PlaneGeometry(80, 80);
+        var groundMat = new THREE.MeshStandardMaterial({
+            color: 0x2a3a4a,
+            roughness: 0.8,
+            metalness: 0.1,
+        });
+        var ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.01;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        var gridHelper = new THREE.GridHelper(80, 40, 0x88ccff, 0x445566);
+        gridHelper.position.y = 0;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.3;
+        scene.add(gridHelper);
+
+        function createSpikes() {
+            var half = CONFIG.worldRadius;
+            var spacing = 2.0;
+            var positions = [];
+            for (var x = -half; x <= half; x += spacing) {
+                positions.push({ x: x, z: -half });
+                positions.push({ x: x, z: half });
+            }
+            for (var z = -half + spacing; z < half; z += spacing) {
+                positions.push({ x: -half, z: z });
+                positions.push({ x: half, z: z });
+            }
+            for (var i = 0; i < positions.length; i++) {
+                var p = positions[i];
+                var spike = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.6, 1.2, 6),
+                    new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x882222, emissiveIntensity: 0.4 })
+                );
+                spike.position.set(p.x, 0.6, p.z);
+                spike.rotation.y = Math.random() * Math.PI;
+                scene.add(spike);
+            }
+        }
+        createSpikes();
+
+        var ringGeo = new THREE.RingGeometry(CONFIG.worldRadius - 0.2, CONFIG.worldRadius, 64);
+        var ringMat = new THREE.MeshBasicMaterial({ color: 0xff4444, side: THREE.DoubleSide, transparent: true,
+            opacity: 0.15 });
+        var ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.05;
+        scene.add(ring);
+
+        // ============================================================
+        // 山丘
+        // ============================================================
+        var mountainData = [];
+
+        function createMountains() {
+            var count = 14;
+            var attempts = 0;
+            var maxAttempts = 100;
+            var placed = 0;
+            var margin = 4;
+
+            while (placed < count && attempts < maxAttempts) {
+                attempts++;
+                var angle = Math.random() * Math.PI * 2;
+                var dist = 10 + Math.random() * (CONFIG.worldRadius - margin - 10);
+                var x = Math.cos(angle) * dist;
+                var z = Math.sin(angle) * dist;
+                if (Math.abs(x) < 6 && Math.abs(z) < 6) continue;
+                var overlap = false;
+                for (var i = 0; i < mountainData.length; i++) {
+                    var dx = mountainData[i].x - x;
+                    var dz = mountainData[i].z - z;
+                    if (dx * dx + dz * dz < 25) { overlap = true; break; }
+                }
+                if (overlap) continue;
+
+                var size = 2 + Math.random() * 4;
+                var hill = new THREE.Mesh(
+                    new THREE.ConeGeometry(size * 0.8, size, 6),
+                    new THREE.MeshStandardMaterial({
+                        color: new THREE.Color().setHSL(0.55, 0.2, 0.15 + Math.random() * 0.1),
+                        roughness: 0.9,
+                        metalness: 0.0,
+                    })
+                );
+                hill.position.set(x, -0.5, z);
+                hill.rotation.y = Math.random() * Math.PI;
+                hill.receiveShadow = true;
+                scene.add(hill);
+                var radius = (size * 0.8) * 0.6;
+                mountainData.push({ x: x, z: z, radius: radius });
+                placed++;
+            }
+        }
+        createMountains();
+
+        // ============================================================
+        // 玩家控制器
+        // ============================================================
+        var euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        var moveForward = false;
+        var moveBackward = false;
+        var moveLeft = false;
+        var moveRight = false;
+
+        // ============================================================
+        // 纹理加载
+        // ============================================================
+        var textureLoader = new THREE.TextureLoader();
+        var doubaoTex = null;
+        var deepseekTex = null;
+
+        var DEEPSEEK_ICON_URLS = [
+            'static/deepseek.png',
+            'https://cdn.deepseek.com/chat/icon.png',
+            'https://raw.githubusercontent.com/deepseek-ai/DeepSeek-V2/main/assets/logo.png',
+            'https://img.icons8.com/color/256/deepseek.png',
+            'https://cdn.jsdelivr.net/gh/deepseek-ai/DeepSeek-V2@main/assets/logo.png',
+            'https://img.logo.dev/deepseek.com?token=pk_550967_edb7d6d05e9b4bc0b7d8bd0e20c98949'
+        ];
+
+        function loadTextures(callback) {
+            var loaded = 0;
+            var total = 2;
+
+            function checkDone() {
+                loaded++;
+                if (loaded >= total) {
+                    if (callback) callback();
+                }
+            }
+
+            var doubaoUrls = [
+                'static/doubao.png',
+                'https://lf-flow-web-cdn.doubao.com/obj/flow-doubao/favicon/new-doubao/64x64.png'
+            ];
+            var doubaoIndex = 0;
+
+            function tryLoadDoubao() {
+                if (doubaoIndex >= doubaoUrls.length) {
+                    doubaoTex = createDoubaoTexture();
+                    checkDone();
+                    return;
+                }
+                textureLoader.load(doubaoUrls[doubaoIndex], function(tex) {
+                    doubaoTex = tex;
+                    checkDone();
+                }, undefined, function() {
+                    doubaoIndex++;
+                    tryLoadDoubao();
+                });
+            }
+            tryLoadDoubao();
+
+            function tryLoadDeepSeek(index) {
+                if (index >= DEEPSEEK_ICON_URLS.length) {
+                    deepseekTex = createDeepSeekTexture();
+                    checkDone();
+                    return;
+                }
+                var url = DEEPSEEK_ICON_URLS[index];
+                textureLoader.load(url, function(tex) {
+                    deepseekTex = tex;
+                    console.log('✅ DeepSeek纹理加载成功: ' + url);
+                    checkDone();
+                }, undefined, function() {
+                    console.warn('⚠️ DeepSeek纹理加载失败: ' + url);
+                    tryLoadDeepSeek(index + 1);
+                });
+            }
+            tryLoadDeepSeek(0);
+        }
+
+        function createDoubaoTexture() {
+            var canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            var ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 256, 256);
+            var grad = ctx.createRadialGradient(128, 120, 20, 128, 128, 90);
+            grad.addColorStop(0, '#ffdd77');
+            grad.addColorStop(0.5, '#f5b342');
+            grad.addColorStop(1, '#d4893b');
+            ctx.beginPath();
+            ctx.ellipse(128, 130, 80, 85, 0, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.shadowBlur = 15;
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.ellipse(100, 110, 22, 26, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(156, 110, 22, 26, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#2d1b0e';
+            ctx.beginPath();
+            ctx.arc(106, 116, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(150, 116, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.beginPath();
+            ctx.arc(94, 102, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(138, 102, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#2d1b0e';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(128, 142, 30, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255,150,150,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(78, 148, 16, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(178, 148, 16, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            var tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        function createDeepSeekTexture() {
+            var canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            var ctx = canvas.getContext('2d');
+            var grad = ctx.createRadialGradient(128, 120, 20, 128, 128, 100);
+            grad.addColorStop(0, '#4D6BFE');
+            grad.addColorStop(0.5, '#6377DC');
+            grad.addColorStop(1, '#2a3a8a');
+            ctx.beginPath();
+            ctx.ellipse(128, 130, 80, 85, 0, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.shadowColor = 'rgba(77,107,254,0.5)';
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 60px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('DS', 128, 140);
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(128, 130, 78, 83, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            var tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        // ============================================================
+        // 爆炸特效
+        // ============================================================
+        function createExplosion(position, isDeepSeek) {
+            var count = isDeepSeek ? 300 : 90;
+            var colors = isDeepSeek ?
+                [0x4D6BFE, 0x6377DC, 0x88aaff, 0xffffff, 0xff6b6b, 0xffaa44, 0xff44aa, 0x44ffaa] :
+                [0xffd93d, 0xff6b6b, 0xffa94d, 0xffffff, 0xff8844];
+            var duration = isDeepSeek ? 2.2 : 1.0;
+
+            for (var i = 0; i < count; i++) {
+                var size = 0.08 + Math.random() * 0.4;
+                var geo = new THREE.SphereGeometry(size, 6, 6);
+                var mat = new THREE.MeshBasicMaterial({
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    transparent: true,
+                    opacity: 1.0,
+                });
+                var p = new THREE.Mesh(geo, mat);
+                p.position.copy(position);
+                var theta = Math.random() * Math.PI * 2;
+                var phi = Math.acos(2 * Math.random() - 1);
+                var speed = 5 + Math.random() * (isDeepSeek ? 25 : 12);
+                var vel = new THREE.Vector3(
+                    Math.sin(phi) * Math.cos(theta) * speed,
+                    Math.sin(phi) * Math.sin(theta) * speed,
+                    Math.cos(phi) * speed
+                );
+                var delay = Math.random() * 0.2;
+                scene.add(p);
+                var life = duration * (0.5 + Math.random() * 0.6);
+                var startTime = performance.now() + delay * 1000;
+                var spinSpeed = (Math.random() - 0.5) * 0.15;
+                var gravity = -0.1 - Math.random() * 0.3;
+
+                (function(p, vel, life, startTime, spinSpeed, gravity) {
+                    function animateParticle() {
+                        var elapsed = (performance.now() - startTime) / 1000;
+                        if (elapsed < 0) { requestAnimationFrame(animateParticle); return; }
+                        if (elapsed > life) {
+                            scene.remove(p);
+                            geo.dispose();
+                            mat.dispose();
+                            return;
+                        }
+                        var progress = elapsed / life;
+                        p.position.x += vel.x * 0.02;
+                        p.position.y += vel.y * 0.02;
+                        p.position.z += vel.z * 0.02;
+                        vel.y += gravity * 0.02;
+                        vel.multiplyScalar(0.997);
+                        p.rotation.x += spinSpeed;
+                        p.rotation.y += spinSpeed * 0.7;
+                        var scale = 1 + Math.sin(progress * Math.PI) * 2.5;
+                        p.scale.set(scale, scale, scale);
+                        p.material.opacity = 1 - progress * progress * 1.2;
+                        requestAnimationFrame(animateParticle);
+                    }
+                    animateParticle();
+                })(p, vel, life, startTime, spinSpeed, gravity);
+            }
+
+            if (isDeepSeek) {
+                var ringCount = 15;
+                for (var j = 0; j < ringCount; j++) {
+                    var radius = 0.2 + j * 0.25;
+                    var ringGeo = new THREE.TorusGeometry(radius, 0.06, 12, 30);
+                    var ringMat = new THREE.MeshBasicMaterial({
+                        color: 0x4D6BFE,
+                        transparent: true,
+                        opacity: 0.9,
+                        blending: THREE.AdditiveBlending,
+                    });
+                    var ringMesh = new THREE.Mesh(ringGeo, ringMat);
+                    ringMesh.position.copy(position);
+                    ringMesh.position.y += 0.5;
+                    ringMesh.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.8;
+                    ringMesh.rotation.z = Math.random() * Math.PI;
+                    scene.add(ringMesh);
+                    var startTime2 = performance.now() + j * 0.04;
+                    (function(ringMesh, startTime2, idx) {
+                        function animateRing() {
+                            var elapsed = (performance.now() - startTime2) / 1000;
+                            if (elapsed > 1.8) {
+                                scene.remove(ringMesh);
+                                ringMesh.geometry.dispose();
+                                ringMesh.material.dispose();
+                                return;
+                            }
+                            var scale = 1 + elapsed * 15;
+                            ringMesh.scale.set(scale, scale, scale);
+                            ringMesh.material.opacity = 0.9 * (1 - elapsed / 1.8);
+                            ringMesh.rotation.z += 0.08;
+                            requestAnimationFrame(animateRing);
+                        }
+                        animateRing();
+                    })(ringMesh, startTime2, j);
+                }
+            }
+
+            var flashGeo = new THREE.SphereGeometry(0.6, 8, 8);
+            var flashMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 1.0,
+                blending: THREE.AdditiveBlending,
+            });
+            var flash = new THREE.Mesh(flashGeo, flashMat);
+            flash.position.copy(position);
+            flash.position.y += 0.3;
+            scene.add(flash);
+            (function(flash) {
+                var startTime3 = performance.now();
+                function animateFlash() {
+                    var elapsed = (performance.now() - startTime3) / 1000;
+                    if (elapsed > 0.8) {
+                        scene.remove(flash);
+                        flash.geometry.dispose();
+                        flash.material.dispose();
+                        return;
+                    }
+                    var scale = 1 + elapsed * 8;
+                    flash.scale.set(scale, scale, scale);
+                    flash.material.opacity = 1 - elapsed / 0.8;
+                    requestAnimationFrame(animateFlash);
+                }
+                animateFlash();
+            })(flash);
+        }
+
+        // ============================================================
+        // 怪物系统
+        // ============================================================
+        function isDeepSeek() {
+            return Math.floor(Math.random() * CONFIG.deepseekSpawnRate) === 0;
+        }
+
+        function createMonster() {
+            if (state.monsters.length >= CONFIG.monsterMaxCount || state.isGameOver) return null;
+
+            var angle = Math.random() * Math.PI * 2;
+            var dist = CONFIG.spawnDistanceMin + Math.random() * (CONFIG.spawnDistanceMax - CONFIG.spawnDistanceMin);
+            var x = Math.cos(angle) * dist;
+            var z = Math.sin(angle) * dist;
+
+            var isDS = isDeepSeek();
+            var size = CONFIG.monsterSize * (0.7 + Math.random() * 0.6);
+            var speed = isDS ? CONFIG.deepseekSpeed * (0.8 + Math.random() * 0.4) : CONFIG.doubaoSpeed * (0.7 + Math.random() *
+                0.6);
+            var tex = isDS ? deepseekTex : doubaoTex;
+
+            var spriteMat = new THREE.SpriteMaterial({
+                map: tex,
+                transparent: true,
+                depthWrite: false,
+                opacity: 1.0,
+                color: 0xffffff,
+            });
+            var sprite = new THREE.Sprite(spriteMat);
+            sprite.position.set(x, CONFIG.playerHeight * 0.7 + size * 0.3, z);
+            sprite.scale.set(size * 1.2, size * 1.2, 1);
+            scene.add(sprite);
+
+            var glowColor = isDS ? 0x4D6BFE : 0xffa94d;
+            var glowMat = new THREE.SpriteMaterial({
+                map: createGlowTexture(glowColor),
+                transparent: true,
+                opacity: isDS ? 0.35 : 0.2,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+            var glow = new THREE.Sprite(glowMat);
+            glow.scale.set(size * (isDS ? 3.2 : 2.5), size * (isDS ? 3.2 : 2.5), 1);
+            glow.position.set(0, -size * 0.1, 0);
+            sprite.add(glow);
+
+            var monster = {
+                sprite: sprite,
+                position: sprite.position,
+                speed: speed,
+                size: size,
+                alive: true,
+                wobbleOffset: Math.random() * 100,
+                hitFlash: 0,
+                isDeepSeek: isDS,
+                glow: glow,
+            };
+            state.monsters.push(monster);
+            return monster;
+        }
+
+        function createGlowTexture(color) {
+            var canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            var ctx = canvas.getContext('2d');
+            var c = new THREE.Color(color);
+            var r = Math.floor(c.r * 255);
+            var g = Math.floor(c.g * 255);
+            var b = Math.floor(c.b * 255);
+            var grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            grad.addColorStop(0, 'rgba(' + r + ',' + g + ',' + b + ',1)');
+            grad.addColorStop(0.3, 'rgba(' + r + ',' + g + ',' + b + ',0.6)');
+            grad.addColorStop(1, 'rgba(' + r + ',' + g + ',' + b + ',0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function updateMonsters(delta) {
+            var playerPos = camera.position;
+            for (var i = state.monsters.length - 1; i >= 0; i--) {
+                var mon = state.monsters[i];
+                if (!mon.alive) {
+                    if (mon.sprite.parent) scene.remove(mon.sprite);
+                    state.monsters.splice(i, 1);
+                    continue;
+                }
+                var dir = new THREE.Vector3().copy(playerPos).sub(mon.position);
+                dir.y = 0;
+                var dist = dir.length();
+                if (dist > 0.5) {
+                    dir.normalize();
+                    var wobble = Math.sin(performance.now() / 1000 * 0.5 + mon.wobbleOffset) * 0.02;
+                    var right = new THREE.Vector3(-dir.z, 0, dir.x);
+                    var moveDir = dir.clone().add(right.multiplyScalar(wobble)).normalize();
+                    var speed = mon.speed * delta;
+                    mon.position.x += moveDir.x * speed;
+                    mon.position.z += moveDir.z * speed;
+                }
+                mon.position.y = CONFIG.playerHeight * 0.7 + mon.size * 0.3;
+                var distToPlayer = new THREE.Vector3().copy(playerPos).sub(mon.position).length();
+                if (distToPlayer < CONFIG.gameOverDistance && state.isPlaying && !state.isGameOver && !state.isPaused) {
+                    loseLife();
+                    mon.alive = false;
+                    if (mon.sprite.parent) scene.remove(mon.sprite);
+                    state.monsters.splice(i, 1);
+                    continue;
+                }
+                if (mon.hitFlash > 0) {
+                    mon.hitFlash -= delta * 4;
+                    if (mon.hitFlash < 0) mon.hitFlash = 0;
+                    mon.sprite.material.color.setHSL(0.08, 1, 0.5 + mon.hitFlash * 0.5);
+                } else {
+                    mon.sprite.material.color.setHex(0xffffff);
+                }
+            }
+        }
+
+        // ============================================================
+        // 速度系统
+        // ============================================================
+        function updateSpeedUI() {
+            for (var i = 0; i < CONFIG.maxSpeedLevel; i++) {
+                if (i < state.speedLevel) {
+                    speedDots[i].classList.add('active');
+                } else {
+                    speedDots[i].classList.remove('active');
+                }
+            }
+            speedLabel.textContent = state.speedLevel;
+        }
+
+        function gainSpeed() {
+            if (state.speedLevel < CONFIG.maxSpeedLevel) {
+                state.speedLevel++;
+                updateSpeedUI();
+                return true;
+            }
+            return false;
+        }
+
+        function consumeSpeed() {
+            if (state.speedLevel > 0) {
+                state.speedLevel--;
+                updateSpeedUI();
+                return true;
+            }
+            return false;
+        }
+
+        function getCurrentSpeed() {
+            var base = CONFIG.moveSpeed;
+            if (state.isSprinting && state.speedLevel > 0) {
+                return base * CONFIG.sprintMultiplier;
+            }
+            return base;
+        }
+
+        // ============================================================
+        // 生命值 & 游戏结束
+        // ============================================================
+        function loseLife() {
+            if (state.isGameOver) return;
+            state.lives--;
+            updateLivesUI();
+            shootFlash.style.background = 'rgba(255,0,0,0.25)';
+            shootFlash.classList.add('active');
+            setTimeout(function() {
+                shootFlash.classList.remove('active');
+                shootFlash.style.background = 'rgba(255,255,255,0.15)';
+            }, 150);
+            if (state.lives <= 0) {
+                gameOver('💀 豆包大军把你包围了！');
+            }
+        }
+
+        function updateLivesUI() {
+            var str = '';
+            for (var i = 0; i < CONFIG.maxLives; i++) {
+                str += i < state.lives ? '❤️' : '🖤';
+            }
+            livesDisplay.textContent = str;
+        }
+
+        function gameOver(message) {
+            if (state.isGameOver) return;
+            state.isGameOver = true;
+            state.isPlaying = false;
+
+            var isNewRecord = updateHighestScore(state.score);
+            finalScore.textContent = state.score;
+            finalHighest.textContent = highestScore;
+            if (isNewRecord) {
+                newRecordMsg.classList.add('show');
+            } else {
+                newRecordMsg.classList.remove('show');
+            }
+
+            finalMsg.textContent = message || '游戏结束！';
+            gameOverOverlay.classList.remove('hidden');
+            gameOverOverlay.style.display = 'flex';
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
+            }
+            controlsHint.style.opacity = '0.5';
+            stopStepLoop();
+            pauseOverlay.classList.remove('show');
+            pauseOverlay.style.display = 'none';
+            state.isSprinting = false;
+            state.sprintTimer = 0;
+            state.sprintConsumeAccum = 0;
+        }
+
+        function restartGame() {
+            for (var i = 0; i < state.monsters.length; i++) {
+                var mon = state.monsters[i];
+                if (mon.sprite.parent) scene.remove(mon.sprite);
+            }
+            state.monsters = [];
+            state.score = 0;
+            state.lives = CONFIG.maxLives;
+            state.isGameOver = false;
+            state.isPlaying = true;
+            state.isPaused = false;
+            state.spawnTimer = 0;
+            state.shootCooldownTimer = 0;
+            state.speedLevel = 0;
+            state.isSprinting = false;
+            state.sprintTimer = 0;
+            state.sprintConsumeAccum = 0;
+            scoreText.textContent = '0';
+            updateLivesUI();
+            updateSpeedUI();
+            gameOverOverlay.classList.add('hidden');
+            gameOverOverlay.style.display = 'none';
+            controlsHint.style.opacity = '1';
+            pauseOverlay.classList.remove('show');
+            pauseOverlay.style.display = 'none';
+            camera.position.set(0, CONFIG.playerHeight, 0);
+            euler.set(0, 0, 0);
+            camera.quaternion.setFromEuler(euler);
+            hitMarker.classList.remove('show');
+            newRecordMsg.classList.remove('show');
+            for (var i = 0; i < 3; i++) {
+                setTimeout(function() { createMonster(); }, i * 400);
+            }
+            stopStepLoop();
+        }
+
+        // ============================================================
+        // 边界 & 山脉碰撞
+        // ============================================================
+        function checkBarrierCollision() {
+            if (state.isGameOver || !state.isPlaying) return;
+            var playerPos = camera.position;
+            var limit = CONFIG.worldRadius - 0.2;
+            if (playerPos.x > limit) playerPos.x = limit;
+            if (playerPos.x < -limit) playerPos.x = -limit;
+            if (playerPos.z > limit) playerPos.z = limit;
+            if (playerPos.z < -limit) playerPos.z = -limit;
+            camera.position.x = playerPos.x;
+            camera.position.z = playerPos.z;
+        }
+
+        function checkMountainCollision() {
+            if (state.isGameOver || !state.isPlaying) return;
+            var playerPos = camera.position;
+            var playerRadius = 0.5;
+            for (var i = 0; i < mountainData.length; i++) {
+                var m = mountainData[i];
+                var dx = playerPos.x - m.x;
+                var dz = playerPos.z - m.z;
+                var dist = Math.sqrt(dx * dx + dz * dz);
+                var threshold = m.radius + playerRadius;
+                if (dist < threshold && dist > 0.001) {
+                    var pushDist = threshold - dist + 0.05;
+                    var angle = Math.atan2(dz, dx);
+                    camera.position.x += Math.cos(angle) * pushDist;
+                    camera.position.z += Math.sin(angle) * pushDist;
+                    playerPos = camera.position;
+                    dx = playerPos.x - m.x;
+                    dz = playerPos.z - m.z;
+                    dist = Math.sqrt(dx * dx + dz * dz);
+                    if (dist < threshold) {
+                        var angle2 = Math.atan2(dz, dx);
+                        camera.position.x += Math.cos(angle2) * (threshold - dist + 0.1);
+                        camera.position.z += Math.sin(angle2) * (threshold - dist + 0.1);
+                    }
+                }
+            }
+            checkBarrierCollision();
+        }
+
+        // ============================================================
+        // 射击系统
+        // ============================================================
+        var raycaster = new THREE.Raycaster();
+
+        var gunSoundBuffer = null;
+        var gunSoundContext = null;
+        var useSyntheticGunSound = false;
+
+        function loadGunSound(callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'static/gun-firing.mp3', true);
+            xhr.responseType = 'arraybuffer';
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var arrayBuffer = xhr.response;
+                    gunSoundContext = new(window.AudioContext || window.webkitAudioContext)();
+                    gunSoundContext.decodeAudioData(arrayBuffer, function(buffer) {
+                        gunSoundBuffer = buffer;
+                        console.log('✅ 枪声加载成功（文件）');
+                        if (callback) callback();
+                    }, function(e) {
+                        console.warn('⚠️ 解码枪声失败，将使用合成音效', e);
+                        useSyntheticGunSound = true;
+                        if (callback) callback();
+                    });
+                } else {
+                    console.warn('⚠️ 未找到 gun-firing.mp3，将使用合成音效');
+                    useSyntheticGunSound = true;
+                    if (callback) callback();
+                }
+            };
+            xhr.onerror = function() {
+                console.warn('⚠️ 加载枪声失败，将使用合成音效');
+                useSyntheticGunSound = true;
+                if (callback) callback();
+            };
+            xhr.send();
+        }
+
+        function playGunSound() {
+            if (useSyntheticGunSound) {
+                try {
+                    var ctx = new(window.AudioContext || window.webkitAudioContext)();
+                    var osc = ctx.createOscillator();
+                    var gain = ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.08);
+                } catch (e) {}
+                return;
+            }
+            if (!gunSoundBuffer || !gunSoundContext) return;
+            try {
+                var source = gunSoundContext.createBufferSource();
+                source.buffer = gunSoundBuffer;
+                var gainNode = gunSoundContext.createGain();
+                gainNode.gain.value = 0.4;
+                source.connect(gainNode);
+                gainNode.connect(gunSoundContext.destination);
+                source.start(0);
+            } catch (e) {}
+        }
+
+        function shoot() {
+            if (!state.isPlaying || state.isGameOver || state.isPaused) return;
+            if (state.shootCooldownTimer > 0) return;
+            state.shootCooldownTimer = CONFIG.shootCooldown;
+
+            playGunSound();
+
+            gunOverlay.classList.add('shoot');
+            setTimeout(function() { gunOverlay.classList.remove('shoot'); }, 80);
+
+            shootFlash.classList.add('active');
+            setTimeout(function() { shootFlash.classList.remove('active'); }, 60);
+
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            raycaster.far = CONFIG.hitDistance;
+            var targets = state.monsters.filter(function(m) { return m.alive; }).map(function(m) { return m.sprite; });
+            var intersects = raycaster.intersectObjects(targets);
+            if (intersects.length > 0) {
+                var hit = intersects[0];
+                var hitSprite = hit.object;
+                for (var i = 0; i < state.monsters.length; i++) {
+                    var mon = state.monsters[i];
+                    if (mon.sprite === hitSprite && mon.alive) {
+                        mon.alive = false;
+                        mon.hitFlash = 1.0;
+                        var points = mon.isDeepSeek ? 30 : 10;
+                        state.score += points;
+                        scoreText.textContent = state.score;
+
+                        createExplosion(mon.position.clone(), mon.isDeepSeek);
+
+                        if (mon.isDeepSeek && Math.random() < CONFIG.speedGainChance) {
+                            gainSpeed();
+                            hitMarker.style.color = '#4D6BFE';
+                            hitMarker.textContent = '⚡+1';
+                            hitMarker.classList.add('show');
+                            setTimeout(function() { hitMarker.classList.remove('show'); }, 600);
+                        } else if (mon.isDeepSeek) {
+                            hitMarker.style.color = '#4D6BFE';
+                            hitMarker.textContent = '⚡';
+                            hitMarker.classList.add('show');
+                            setTimeout(function() { hitMarker.classList.remove('show'); }, 300);
+                        } else {
+                            hitMarker.style.color = '#ffd93d';
+                            hitMarker.textContent = '✦';
+                            hitMarker.classList.add('show');
+                            setTimeout(function() { hitMarker.classList.remove('show'); }, 200);
+                        }
+
+                        setTimeout(function() {
+                            if (mon.sprite.parent) scene.remove(mon.sprite);
+                            var idx = state.monsters.indexOf(mon);
+                            if (idx !== -1) state.monsters.splice(idx, 1);
+                        }, 100);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // ============================================================
+        // 键盘 / 鼠标事件
+        // ============================================================
+        document.addEventListener('keydown', function(e) {
+            switch (e.code) {
+                case 'KeyW':
+                    moveForward = true;
+                    break;
+                case 'KeyS':
+                    moveBackward = true;
+                    break;
+                case 'KeyA':
+                    moveLeft = true;
+                    break;
+                case 'KeyD':
+                    moveRight = true;
+                    break;
+                case 'ShiftLeft':
+                case 'ShiftRight':
+                    if (state.isPlaying && !state.isGameOver && !state.isPaused && state.speedLevel > 0) {
+                        state.isSprinting = true;
+                        state.sprintTimer = 0;
+                        state.sprintConsumeAccum = 0;
+                    }
+                    break;
+                case 'Escape':
+                    if (state.isPlaying && !state.isGameOver) {
+                        state.isPaused = !state.isPaused;
+                        if (state.isPaused) {
+                            pauseOverlay.classList.add('show');
+                            pauseOverlay.style.display = 'flex';
+                            if (document.pointerLockElement) {
+                                document.exitPointerLock();
+                            }
+                            state.isSprinting = false;
+                        } else {
+                            pauseOverlay.classList.remove('show');
+                            pauseOverlay.style.display = 'none';
+                            renderer.domElement.requestPointerLock();
+                        }
+                    }
+                    break;
+            }
+        });
+        document.addEventListener('keyup', function(e) {
+            switch (e.code) {
+                case 'KeyW':
+                    moveForward = false;
+                    break;
+                case 'KeyS':
+                    moveBackward = false;
+                    break;
+                case 'KeyA':
+                    moveLeft = false;
+                    break;
+                case 'KeyD':
+                    moveRight = false;
+                    break;
+                case 'ShiftLeft':
+                case 'ShiftRight':
+                    state.isSprinting = false;
+                    state.sprintTimer = 0;
+                    state.sprintConsumeAccum = 0;
+                    break;
+            }
+        });
+
+        // ---------- 核心修改：鼠标锁定变化时自动暂停/恢复 ----------
+        document.addEventListener('pointerlockchange', function() {
+            var locked = !!document.pointerLockElement;
+            state.isPointerLocked = locked;
+            // 只有在游戏进行中且未结束时才处理
+            if (state.isPlaying && !state.isGameOver) {
+                if (!locked && !state.isPaused) {
+                    // 失去锁定 → 暂停
+                    state.isPaused = true;
+                    pauseOverlay.classList.add('show');
+                    pauseOverlay.style.display = 'flex';
+                    // 同时停止脚步、疾跑等
+                    stopStepLoop();
+                    state.isSprinting = false;
+                    state.sprintTimer = 0;
+                    state.sprintConsumeAccum = 0;
+                } else if (locked && state.isPaused) {
+                    // 获得锁定 → 恢复
+                    state.isPaused = false;
+                    pauseOverlay.classList.remove('show');
+                    pauseOverlay.style.display = 'none';
+                }
+            }
+        });
+
+        document.addEventListener('click', function() {
+            if (!state.isPlaying || state.isGameOver || state.isPaused) return;
+            if (!document.pointerLockElement) {
+                renderer.domElement.requestPointerLock();
+            }
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!state.isPointerLocked || state.isPaused) return;
+            var movementX = e.movementX || 0;
+            var movementY = e.movementY || 0;
+            euler.y -= movementX * CONFIG.mouseSensitivity;
+            euler.x -= movementY * CONFIG.mouseSensitivity;
+            euler.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, euler.x));
+            camera.quaternion.setFromEuler(euler);
+        });
+
+        document.addEventListener('mousedown', function(e) {
+            if (e.button === 0 && state.isPointerLocked && state.isPlaying && !state.isPaused) {
+                shoot();
+            }
+        });
+
+        window.addEventListener('resize', function() {
+            var w = window.innerWidth;
+            var h = window.innerHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        });
+
+        gunImg.onerror = function() {
+            gunImg.style.display = 'none';
+            var fallback = document.createElement('div');
+            fallback.textContent = '🔫';
+            fallback.style.fontSize = '80px';
+            fallback.style.color = '#fff';
+            fallback.style.textShadow = '0 8px 24px rgba(0,0,0,0.6)';
+            fallback.style.lineHeight = '1';
+            gunOverlay.appendChild(fallback);
+        };
+
+        // ============================================================
+        // 脚步声系统
+        // ============================================================
+        var stepAudioBuffer = null;
+        var stepContext = null;
+        var stepLoopSource = null;
+        var stepGainNode = null;
+        var isStepPlaying = false;
+
+        function loadStepAudio(callback) {
+            var tryFiles = ['static/step.mp3', 'static/steps.mp3'];
+            var index = 0;
+
+            function tryLoad() {
+                if (index >= tryFiles.length) {
+                    if (callback) callback();
+                    return;
+                }
+                var url = tryFiles[index];
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.responseType = 'arraybuffer';
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        var arrayBuffer = xhr.response;
+                        stepContext = new(window.AudioContext || window.webkitAudioContext)();
+                        stepContext.decodeAudioData(arrayBuffer, function(buffer) {
+                            stepAudioBuffer = buffer;
+                            if (callback) callback();
+                        }, function() {
+                            index++;
+                            tryLoad();
+                        });
+                    } else {
+                        index++;
+                        tryLoad();
+                    }
+                };
+                xhr.onerror = function() {
+                    index++;
+                    tryLoad();
+                };
+                xhr.send();
+            }
+            tryLoad();
+        }
+
+        function startStepLoop() {
+            if (!stepAudioBuffer || !stepContext || isStepPlaying || state.isPaused) return;
+            try {
+                var source = stepContext.createBufferSource();
+                source.buffer = stepAudioBuffer;
+                source.loop = true;
+                var gainNode = stepContext.createGain();
+                gainNode.gain.value = 0.3;
+                source.connect(gainNode);
+                gainNode.connect(stepContext.destination);
+                source.start(0);
+                stepLoopSource = source;
+                stepGainNode = gainNode;
+                isStepPlaying = true;
+            } catch (e) {}
+        }
+
+        function stopStepLoop() {
+            if (!isStepPlaying) return;
+            if (stepLoopSource) { try { stepLoopSource.stop(); } catch (e) {} stepLoopSource = null; }
+            if (stepGainNode) { try { stepGainNode.disconnect(); } catch (e) {} stepGainNode = null; }
+            isStepPlaying = false;
+        }
+
+        // ============================================================
+        // 游戏主循环
+        // ============================================================
+        var clock = new THREE.Clock();
+        var wasMoving = false;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            var delta = Math.min(clock.getDelta(), 0.05);
+
+            if (state.shootCooldownTimer > 0) state.shootCooldownTimer -= delta;
+
+            if (state.isPlaying && !state.isGameOver && !state.isPaused) {
+                var forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                forward.y = 0;
+                forward.normalize();
+                var right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                right.y = 0;
+                right.normalize();
+
+                if (state.isSprinting) {
+                    state.sprintTimer += delta;
+                    state.sprintConsumeAccum += delta;
+                    if (state.sprintConsumeAccum >= CONFIG.sprintConsumeInterval) {
+                        state.sprintConsumeAccum = 0;
+                        if (!consumeSpeed()) {
+                            state.isSprinting = false;
+                            state.sprintTimer = 0;
+                        }
+                    }
+                    if (state.sprintTimer >= CONFIG.sprintMaxDuration) {
+                        state.isSprinting = false;
+                        state.sprintTimer = 0;
+                        state.sprintConsumeAccum = 0;
+                    }
+                }
+
+                var speed = getCurrentSpeed() * delta;
+                var moved = false;
+                if (moveForward) { camera.position.add(forward.clone().multiplyScalar(speed)); moved = true; }
+                if (moveBackward) { camera.position.add(forward.clone().multiplyScalar(-speed)); moved = true; }
+                if (moveLeft) { camera.position.add(right.clone().multiplyScalar(-speed)); moved = true; }
+                if (moveRight) { camera.position.add(right.clone().multiplyScalar(speed)); moved = true; }
+                if (moved) camera.position.y = CONFIG.playerHeight;
+
+                checkMountainCollision();
+
+                if (moved && !wasMoving) startStepLoop();
+                else if (!moved && wasMoving) stopStepLoop();
+                wasMoving = moved;
+
+                if (!state.isGameOver) {
+                    state.spawnTimer += delta;
+                    if (state.spawnTimer >= CONFIG.monsterSpawnInterval) {
+                        state.spawnTimer = 0;
+                        createMonster();
+                    }
+                }
+                updateMonsters(delta);
+            } else {
+                if (wasMoving) { stopStepLoop();
+                    wasMoving = false; }
+                if (state.isPaused && isStepPlaying) {
+                    stopStepLoop();
+                }
+                if (state.isPaused) {
+                    state.sprintTimer = 0;
+                    state.sprintConsumeAccum = 0;
+                    state.isSprinting = false;
+                }
+            }
+            renderer.render(scene, camera);
+        }
+
+        // ============================================================
+        // 启动流程
+        // ============================================================
+        function init() {
+            loadHighestScore();
+
+            loadingOverlay.classList.remove('hidden');
+
+            loadTextures(function() {
+                loadStepAudio(function() {
+                    loadGunSound(function() {
+                        loadingOverlay.classList.add('hidden');
+                        setTimeout(function() {
+                            loadingOverlay.style.display = 'none';
+                        }, 800);
+
+                        updateLivesUI();
+                        updateSpeedUI();
+
+                        startBtn.addEventListener('click', function() {
+                            if (state.isPlaying) return;
+                            startOverlay.classList.add('hidden');
+                            startOverlay.style.display = 'none';
+                            state.isPlaying = true;
+                            state.isPaused = false;
+                            state.isSprinting = false;
+                            state.sprintTimer = 0;
+                            state.sprintConsumeAccum = 0;
+                            if (stepContext && stepContext.state === 'suspended') {
+                                stepContext.resume();
+                            }
+                            if (gunSoundContext && gunSoundContext.state === 'suspended') {
+                                gunSoundContext.resume();
+                            }
+                            for (var i = 0; i < 4; i++) {
+                                setTimeout(function() { createMonster(); }, i * 500);
+                            }
+                            renderer.domElement.requestPointerLock();
+                        });
+
+                        tutorialBtn.addEventListener('click', function() {
+                            startOverlay.classList.add('hidden');
+                            startOverlay.style.display = 'none';
+                            tutorialOverlay.classList.remove('hidden');
+                            tutorialOverlay.style.display = 'flex';
+                        });
+
+                        tutorialBackBtn.addEventListener('click', function() {
+                            tutorialOverlay.classList.add('hidden');
+                            tutorialOverlay.style.display = 'none';
+                            startOverlay.classList.remove('hidden');
+                            startOverlay.style.display = 'flex';
+                        });
+
+                        restartBtn.addEventListener('click', function() {
+                            restartGame();
+                            renderer.domElement.requestPointerLock();
+                        });
+
+                        animate();
+                    });
+                });
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>

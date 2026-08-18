@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>友情链接 | 编程猫怪盗の小站</title>
+<link rel="icon" href="../me.webp" type="image/webp">
+<style>
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: system-ui, "微软雅黑", sans-serif;
+}
+html{
+    scroll-behavior: smooth;
+}
+body{
+    background-color: #040406;
+    color: #e6e6f0;
+}
+/* 滚动动画 */
+.scroll-animate{
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.scroll-animate.active{
+    opacity: 1;
+    transform: translateY(0);
+}
+/* 导航栏（统一汉堡菜单） */
+nav{
+    width: 100%;
+    position: fixed;
+    top: 0;
+    padding: 20px 6%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(14px);
+    background: rgba(4,4,6,0.95);
+    border-bottom: 1px solid #12121a;
+    z-index: 999;
+}
+.logo{
+    font-size: 24px;
+    font-weight: bold;
+    background: linear-gradient(90deg,#60a5fa,#c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transition: filter 0.3s ease;
+}
+.logo:hover{
+    filter: drop-shadow(0 0 8px rgba(192,132,252,0.4));
+}
+.nav-menu{
+    display: flex;
+    gap: 28px;
+}
+.nav-menu a{
+    color: #a0a0c2;
+    text-decoration: none;
+    font-size: 15px;
+    transition: 0.3s;
+}
+.nav-menu a:hover{
+    color: #c084fc;
+}
+.hamburger{
+    display: none;
+    font-size: 28px;
+    color: #e6e6f0;
+    cursor: pointer;
+}
+/* 主体容器 */
+main{
+    padding-top: 140px;
+    padding-bottom: 100px;
+    padding-left: 6%;
+    padding-right: 6%;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+.page-title{
+    text-align: center;
+    margin-bottom: 60px;
+}
+.page-title h2{
+    font-size: 36px;
+    margin-bottom: 12px;
+}
+.page-title h2 span{
+    background: linear-gradient(90deg,#60a5fa,#c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.page-title p{
+    color: #707090;
+    font-size: 15px;
+}
+/* 友链卡片：只让卡片参与网格，按钮不参与 */
+.friend-box{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 26px;
+    align-items: stretch;
+    grid-auto-flow: row;
+}
+/* 卡片链接容器，铺满整块卡片 */
+.friend-link{
+    display: block;
+    text-decoration: none;
+    height: 100%;
+}
+.friend-card{
+    background: #0d0d14;
+    border: 1px solid #181826;
+    border-radius: 16px;
+    padding: 32px 26px;
+    transition: 0.3s;
+    height: 100%;
+}
+.friend-card:hover{
+    border-color: #c084fc;
+    transform: translateY(-6px);
+}
+.friend-card h4{
+    font-size: 22px;
+    margin-bottom: 10px;
+    color:#e6e6f0;
+}
+.friend-card .domain{
+    color: #60a5fa;
+    font-size: 15px;
+}
+.friend-card p{
+    margin-top: 12px;
+    color: #8282a3;
+    line-height: 1.7;
+    font-size: 14px;
+}
+/* 返回主页按钮：单独放在按钮容器里，不进网格流 */
+.back-home-wrap{
+    grid-column: 1 / -1;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 50px;
+}
+.back-home{
+    text-decoration: none;
+    padding: 12px 30px;
+    border: 1px solid #60a5fa;
+    color: #c084fc;
+    border-radius: 999px;
+    transition: 0.3s;
+}
+.back-home:hover{
+    background: rgba(96,165,250,0.08);
+    transform: translateY(-3px);
+}
+/* 页脚 */
+footer{
+    text-align:center;
+    padding:30px;
+    border-top:1px solid #12121a;
+    color:#505070;
+    font-size:14px;
+}
+/* 手机适配 */
+@media (max-width:768px){
+    .nav-menu{
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: rgba(4,4,6,0.95);
+        flex-direction: column;
+        padding: 20px 6%;
+        gap: 16px;
+        display: none;
+    }
+    .nav-menu.show{
+        display: flex;
+    }
+    .hamburger{
+        display: block;
+    }
+    .friend-box{
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+</head>
+<body>
+<!-- 导航栏 -->
+<nav>
+    <div class="logo">编程猫怪盗の小站</div>
+    <div class="nav-menu">
+        <a href="../index.html">首页</a>
+        <a href="../projects/index.html">项目作品</a>
+        <a href="./index.html">友情链接</a>
+    </div>
+    <div class="hamburger" id="menuBtn">≡</div>
+</nav>
+
+<main>
+    <div class="page-title scroll-animate">
+        <h2>全部<span>友情链接</span></h2>
+        <p>徒弟与各路同好小伙伴站点合集</p>
+    </div>
+
+    <div class="friend-box">
+        <!-- 布丁 -->
+        <a href="https://buding.bcmgd.cn" target="_blank" class="friend-link scroll-animate">
+            <div class="friend-card">
+                <h4>布丁</h4>
+                <div class="domain">buding.bcmgd.cn</div>
+                <p>我的徒弟，比较活跃，热爱前端开发，很有激情</p>
+            </div>
+        </a>
+        <!-- 秋风 -->
+        <a href="https://qiufeng.bcmgd.cn" target="_blank" class="friend-link scroll-animate">
+            <div class="friend-card">
+                <h4>秋风</h4>
+                <div class="domain">qiufeng.bcmgd.cn</div>
+                <p>我的徒弟，思维敏捷，善于提出问题</p>
+            </div>
+        </a>
+        <!-- MEMZGBL博客 -->
+        <a href="https://blog.mcstarland.top/" target="_blank" class="friend-link scroll-animate">
+            <div class="friend-card">
+                <h4>MEMZGBL</h4>
+                <div class="domain">blog.mcstarland.top</div>
+                <p>MEMZGBL的博客 · 相信奇迹之人，本身就是奇迹</p>
+            </div>
+        </a>
+        <!-- TT23XR工作室 -->
+        <a href="https://tt23xr.sxxyrry.qzz.io/" target="_blank" class="friend-link scroll-animate">
+            <div class="friend-card">
+                <h4>TT23XR 工作室</h4>
+                <div class="domain">tt23xr.sxxyrry.qzz.io</div>
+                <p>TT23XR 工作室 · 探索未知，创造非凡</p>
+            </div>
+        </a>
+        <!-- helloworl1926 -->
+        <a href="https://sector-qpqf.upma.site" target="_blank" class="friend-link scroll-animate">
+            <div class="friend-card">
+                <h4>helloworl1926</h4>
+                <div class="domain">sector-qpqf.upma.site</div>
+                <p>本人在学习网站开发，此网站尚在完善中</p>
+            </div>
+        </a>
+        <!-- WarpWhile静态站（最后一个） -->
+        <a href="https://shuttle-xpey.upma.site/" target="_blank" class="friend-link scroll-animate">
+            <div class="friend-card">
+                <h4>WarpWhile</h4>
+                <div class="domain">shuttle-xpey.upma.site</div>
+                <p>WarpWhile的官方静态站，整体呈暗黑色调，在upma托管。</p>
+            </div>
+        </a>
+
+        <!-- 返回主页按钮：单独占整行 -->
+        <div class="back-home-wrap">
+            <a href="../index.html" class="back-home">← 返回我的主页</a>
+        </div>
+    </div>
+</main>
+
+<!-- 页脚 -->
+<footer>
+© 2026 编程猫怪盗の小站 | 友链独立页面
+</footer>
+
+<!-- 滚动动画JS -->
+<script>
+// 汉堡菜单切换
+const menuBtn = document.getElementById('menuBtn');
+const navMenu = document.querySelector('.nav-menu');
+menuBtn.addEventListener('click', ()=>{
+    navMenu.classList.toggle('show');
+})
+// 滚动动画
+const animateItems = document.querySelectorAll('.scroll-animate');
+window.addEventListener('scroll', () => {
+    animateItems.forEach(item => {
+        const itemTop = item.getBoundingClientRect().top;
+        const triggerPoint = window.innerHeight * 0.85;
+        if(itemTop < triggerPoint){
+            item.classList.add('active');
+        }
+    })
+})
+window.dispatchEvent(new Event('scroll'));
+</script>
+</body>
+</html>

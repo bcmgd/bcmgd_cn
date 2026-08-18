@@ -1,0 +1,896 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>虚空跃途 | 项目作品 | 编程猫怪盗の小站</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-touch-callout: none; }
+        body { overflow: hidden; background: #87ceeb; font-family: 'Segoe UI', system-ui, sans-serif; touch-action: none; }
+        #loadingMask { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 999; display: flex; align-items: center; justify-content: center; transition: opacity 0.6s ease; }
+        #loadingMask.hide { opacity: 0; pointer-events: none; display: none !important; }
+        #loadingText { color: #fff; font-size: 3rem; letter-spacing: 6px; animation: pulse 1.6s infinite alternate; }
+        @keyframes pulse { 0% { opacity: 0.4; transform: scale(0.98); } 100% { opacity: 1; transform: scale(1.02); } }
+        #tip { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; background: rgba(0,0,0,0.8); padding: 28px 36px; border-radius: 16px; font-size: 1rem; line-height: 2; text-align: center; z-index: 10; pointer-events: none; backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.15); }
+        #tip.hidden { display: none; }
+        #status { position: fixed; top: 20px; left: 20px; color: #fff; font-size: 1.1rem; text-shadow: 0 2px 8px rgba(0,0,0,0.7); z-index: 5; background: rgba(0,0,0,0.4); padding: 8px 18px; border-radius: 30px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1); user-select: none; pointer-events: none; }
+        .save-panel { position: fixed; top: 20px; right: 20px; z-index: 6; display: flex; gap: 10px; }
+        .save-btn { padding: 8px 16px; border: none; border-radius: 30px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); touch-action: manipulation; }
+        .save-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+        .save-btn:active { transform: translateY(0px); }
+        #saveGame { background: #22aa44; color: white; }
+        #clearSave { background: #dd3333; color: white; }
+        #joystick-area { position: fixed; bottom: 40px; left: 40px; width: 140px; height: 140px; border-radius: 50%; background: rgba(255,255,255,0.2); backdrop-filter: blur(6px); border: 2px solid rgba(255,255,255,0.4); z-index: 20; touch-action: none; }
+        #joystick-knob { position: absolute; top: 50%; left: 50%; width: 60px; height: 60px; margin-left: -30px; margin-top: -30px; border-radius: 50%; background: rgba(255,255,255,0.7); box-shadow: 0 0 20px rgba(0,0,0,0.3); pointer-events: none; transition: none; }
+        #jump-btn { position: fixed; bottom: 50px; right: 40px; width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.25); backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.4); color: #fff; font-size: 1.2rem; font-weight: bold; z-index: 20; display: flex; justify-content: center; align-items: center; touch-action: manipulation; box-shadow: 0 4px 20px rgba(0,0,0,0.3); user-select: none; }
+        #jump-btn:active { transform: scale(0.9); }
+        @media (max-width: 768px) {
+            #joystick-area { width: 120px; height: 120px; bottom: 30px; left: 30px; }
+            #joystick-knob { width: 50px; height: 50px; margin-left: -25px; margin-top: -25px; }
+            #jump-btn { width: 70px; height: 70px; bottom: 40px; right: 30px; font-size: 1rem; }
+            #loadingText { font-size: 2rem; }
+        }
+        @media (pointer: coarse) { #joystick-area { display: block !important; } #jump-btn { display: flex !important; } }
+        @media (pointer: fine) { #joystick-area { display: none !important; } #jump-btn { display: none !important; } }
+        .completion-box { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(80,80,80,0.95); color: white; padding: 40px 60px; border-radius: 20px; z-index: 100; text-align: center; font-size: 32px; border: 2px solid #888; box-shadow: 0 0 50px rgba(0,0,0,0.5); max-width: 90%; line-height: 1.6; pointer-events: none; transition: opacity 0.3s; }
+        .completion-box.hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- 加载遮罩 -->
+    <div id="loadingMask"><div id="loadingText">加载中......</div></div>
+
+    <div id="tip">《虚空跃途》<br />点击屏幕开始游戏<br />🖱️ 鼠标：控制视角<br />⌨️ WASD：前后左右移动<br />␣ 空格：跳跃<br />掉落深渊自动回到当前关卡起点<br />ESC：退出鼠标锁定</div>
+    <div id="status">第一关：0 / 6</div>
+
+    <div class="save-panel">
+        <button class="save-btn" id="saveGame">💾 保存</button>
+        <button class="save-btn" id="clearSave">🗑️ 清除</button>
+    </div>
+
+    <div id="joystick-area"><div id="joystick-knob"></div></div>
+    <div id="jump-btn">跳</div>
+
+    <div id="completionBox" class="completion-box hidden">🎉 恭喜通关！</div>
+
+    <!-- 立即隐藏加载遮罩 -->
+    <script>
+        (function() {
+            var mask = document.getElementById('loadingMask');
+            if (mask) { mask.style.display = 'none'; mask.classList.add('hide'); }
+            setTimeout(function() {
+                var m = document.getElementById('loadingMask');
+                if (m) { m.style.display = 'none'; m.classList.add('hide'); }
+            }, 2000);
+        })();
+    </script>
+
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+
+    <script type="module">
+        // ================================================================
+        // ★★★ 可调游戏参数（显眼常量） ★★★
+        // ================================================================
+        const MOVE_SPEED = 14;                // 水平移动速度 (单位/秒)
+        const JUMP_FORCE_BASE = 10;           // 普通跳跃初速度 (第一、二关)
+        const JUMP_FORCE_LV3 = 15;            // 第三关跳跃初速度 (更高跳跃)
+        const GRAVITY = 25;                   // 重力加速度 (正数)
+        const DISAPPEAR_ANIM_DURATION = 500;  // 平台消失动画时长 (毫秒)
+        const DISAPPEAR_START_DELAY = 300;    // 踩上后延迟多久开始消失 (毫秒)
+        // ================================================================
+
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+        // ---------- DOM 元素 ----------
+        const loadingMask = document.getElementById('loadingMask');
+        const statusEl = document.getElementById('status');
+        const tip = document.getElementById('tip');
+        const saveBtn = document.getElementById('saveGame');
+        const clearBtn = document.getElementById('clearSave');
+        const joystickArea = document.getElementById('joystick-area');
+        const joystickKnob = document.getElementById('joystick-knob');
+        const jumpBtn = document.getElementById('jump-btn');
+        const completionBox = document.getElementById('completionBox');
+
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        // ---------- 场景 ----------
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 40, 300);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const clock = new THREE.Clock();
+
+        // ---------- 存档 ----------
+        const SAVE_KEY = 'void_jump_save_data';
+        let inLevel2 = false;
+        let inLevel3 = false;
+        let inLevel4 = false;
+        let winTimeout = null;
+
+        function saveGameData() {
+            const data = { inLevel2, inLevel3, inLevel4, camX: camera.position.x, camY: camera.position.y, camZ: camera.position.z };
+            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+            alert('✅ 存档已保存！下次打开可继续冒险。');
+        }
+
+        function loadGameData() {
+            const raw = localStorage.getItem(SAVE_KEY);
+            if (!raw) return false;
+            try {
+                const data = JSON.parse(raw);
+                inLevel2 = data.inLevel2 || false;
+                inLevel3 = data.inLevel3 || false;
+                inLevel4 = data.inLevel4 || false;
+                camera.position.set(data.camX, data.camY, data.camZ);
+                return true;
+            } catch (_) {
+                localStorage.removeItem(SAVE_KEY);
+                return false;
+            }
+        }
+
+        function clearSaveData() {
+            if (confirm('⚠️ 确定要删除全部存档吗？此操作无法撤销！')) {
+                localStorage.removeItem(SAVE_KEY);
+                inLevel2 = false; inLevel3 = false; inLevel4 = false;
+                camera.position.copy(spawnLv1);
+                updateStatus();
+                if (winTimeout) { clearTimeout(winTimeout); winTimeout = null; }
+                completionBox.classList.add('hidden');
+                alert('🗑️ 存档已清除，下次将从头开始。');
+            }
+        }
+
+        saveBtn.addEventListener('click', saveGameData);
+        clearBtn.addEventListener('click', clearSaveData);
+
+        // ---------- 控制器 ----------
+        const controls = new PointerLockControls(camera, document.body);
+        controls.minPolarAngle = 0;
+        controls.maxPolarAngle = Math.PI - 0.01;
+
+        if (isTouchDevice) {
+            controls.enabled = false;
+        } else {
+            document.addEventListener('click', () => controls.lock());
+            controls.addEventListener('lock', () => tip.classList.add('hidden'));
+            controls.addEventListener('unlock', () => tip.classList.remove('hidden'));
+        }
+
+        // ---------- 灯光 ----------
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambient);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(50, 80, 30);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 300;
+        dirLight.shadow.camera.left = -100;
+        dirLight.shadow.camera.right = 100;
+        dirLight.shadow.camera.top = 100;
+        dirLight.shadow.camera.bottom = -100;
+        scene.add(dirLight);
+
+        // ---------- 出生点 (提前定义，供存档使用) ----------
+        const spawnLv1 = new THREE.Vector3(0, 1.6 + 0.5, 5);
+        const spawnLv2 = new THREE.Vector3(0, 1.6 + 0.5, -118);  // START_Z + 2
+        const spawnLv3 = new THREE.Vector3(0, 1.6 + 0.5, -418);  // THIRD_Z + 2
+        const spawnLv4 = new THREE.Vector3(0, 1.6 + 0.5, -648);  // FOURTH_Z + 2
+
+        // ---------- 平台管理 ----------
+        const platforms = [];
+        const movingPlatforms = [];
+
+        let leftDualPlat = null, rightDualPlat = null, movingPlatLv1 = null;
+        let blackHoleLv1 = null, blackHoleLv2 = null, blackHoleLv3 = null;
+        let hasTeleported = false;
+        let disappearingPlatforms = [];
+
+        function createPlatform(x, y, z, w, h, d, color, isFake = false) {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0.05 });
+            const plat = new THREE.Mesh(geo, mat);
+            plat.position.set(x, y, z);
+            plat.castShadow = true;
+            plat.receiveShadow = true;
+            plat.userData = {
+                width: w, height: h, depth: d,
+                minX: x - w/2, maxX: x + w/2,
+                minZ: z - d/2, maxZ: z + d/2,
+                topY: y + h/2, bottomY: y - h/2,
+                isFake: isFake,
+                isDisappearing: false,
+                disappearTimer: null,
+                disappearStartTimer: null,   // 用于延迟开始的定时器
+                isEnd: false, isStart: false,
+                noFollow: false,
+                isMoving: false,
+                moveSpeed: 0, moveRange: 0, baseX: 0, moveDir: 1,
+                origColor: color,
+                inDisappearAnim: false
+            };
+            platforms.push(plat);
+            scene.add(plat);
+            return plat;
+        }
+
+        // ---------- 第一关辅助 ----------
+        function resetDualPlatforms() {
+            if (leftDualPlat) { scene.remove(leftDualPlat); platforms.splice(platforms.indexOf(leftDualPlat),1); }
+            if (rightDualPlat) { scene.remove(rightDualPlat); platforms.splice(platforms.indexOf(rightDualPlat),1); }
+            leftDualPlat = createPlatform(-3.5, 2.5, -48, 4, 1, 5, 0x2196f3, false);
+            rightDualPlat = createPlatform(3.5, 2.5, -48, 4, 1, 5, 0x2196f3, true);
+        }
+
+        // 牌子 (字体48px)
+        function createSign(x, y, z, line1, line2 = '') {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 0, 512, 256);
+            ctx.strokeStyle = '#5D2E0C';
+            ctx.lineWidth = 16;
+            ctx.strokeRect(0, 0, 512, 256);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 48px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (line2 === '') {
+                ctx.fillText(line1, 256, 128);
+            } else {
+                ctx.fillText(line1, 256, 90);
+                ctx.fillText(line2, 256, 162);
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.25), new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide }));
+            const topY = y + 0.5;
+            const poleH = 1.4;
+            sign.position.set(x - 2.5, topY + poleH + 1.25/2, z);
+            scene.add(sign);
+            const pole = new THREE.Mesh(new THREE.BoxGeometry(0.15, poleH, 0.15), new THREE.MeshStandardMaterial({ color: 0x5D2E0C }));
+            pole.position.set(x - 2.5, topY + poleH/2, z);
+            scene.add(pole);
+        }
+
+        function createCenteredSign(x, y, z, line1, line2 = '') {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 0, 512, 256);
+            ctx.strokeStyle = '#5D2E0C';
+            ctx.lineWidth = 16;
+            ctx.strokeRect(0, 0, 512, 256);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 48px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (line2 === '') {
+                ctx.fillText(line1, 256, 128);
+            } else {
+                ctx.fillText(line1, 256, 90);
+                ctx.fillText(line2, 256, 162);
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.25), new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide }));
+            const topY = y + 0.5;
+            const poleH = 1.4;
+            sign.position.set(x, topY + poleH + 1.25/2, z);
+            scene.add(sign);
+            const pole = new THREE.Mesh(new THREE.BoxGeometry(0.15, poleH, 0.15), new THREE.MeshStandardMaterial({ color: 0x5D2E0C }));
+            pole.position.set(x, topY + poleH/2, z);
+            scene.add(pole);
+        }
+
+        function createBlackHole(x, platformY, z) {
+            const top = platformY + 0.5;
+            const r = 1.3;
+            const geo = new THREE.SphereGeometry(r, 32, 32);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x110022, roughness: 0.2 });
+            const hole = new THREE.Mesh(geo, mat);
+            hole.position.set(x, top + r, z);
+            hole.userData = { radius: r, x, z, platformTopY: top };
+            scene.add(hole);
+            return hole;
+        }
+
+        // ---------- 创建第一关 ----------
+        createPlatform(0, 0, 0, 15, 1, 15, 0x4caf50);
+        createSign(0, 0, 0, '前进到终点', '黄色的平台');
+        createPlatform(0, 0, -16, 6, 1, 5, 0x2196f3);
+        createPlatform(0, 0.5, -28, 5.5, 1, 5, 0x2196f3);
+        createPlatform(0, 2.5, -36, 7, 1, 6, 0x2196f3);
+        createSign(-1, 2.5, -39, '只有一块是真的', '');
+        resetDualPlatforms();
+
+        movingPlatLv1 = createPlatform(0, 1.5, -60, 6, 1, 5, 0x2196f3);
+        movingPlatLv1.userData.moveSpeed = 6;
+        movingPlatLv1.userData.moveRange = 4;
+        movingPlatLv1.userData.baseX = 0;
+        movingPlatLv1.userData.moveDir = 1;
+        movingPlatLv1.userData.isMoving = true;
+        movingPlatLv1.userData.isLv2 = false;
+        movingPlatLv1.userData.noFollow = false;
+        movingPlatforms.push(movingPlatLv1);
+
+        createPlatform(0, 1.5, -72, 10, 1, 10, 0xffd700);
+        blackHoleLv1 = createBlackHole(0, 1.5, -72);
+
+        // ---------- 第二关 ----------
+        const PLATFORM_COUNT_DISAPPEAR = 7;
+        const PLATFORM_SPACING = 12;
+        const START_Z = -120;
+        const PLATFORM_Y = 0;
+        const PLATFORM_HEIGHT = 1;
+
+        const startPlat = createPlatform(0, PLATFORM_Y, START_Z, 15, PLATFORM_HEIGHT, 15, 0x4caf50);
+        startPlat.userData.isStart = true;
+        startPlat.userData.isDisappearing = false;
+        createSign(0, PLATFORM_Y, START_Z - 4, '不要停！', '平台会消失');
+
+        disappearingPlatforms = [];
+        for (let i = 1; i <= PLATFORM_COUNT_DISAPPEAR; i++) {
+            const z = START_Z - i * PLATFORM_SPACING;
+            const plat = createPlatform(0, PLATFORM_Y, z, 3.0, PLATFORM_HEIGHT, 3.0, 0x2196f3);
+            plat.userData.isStart = false;
+            plat.userData.isEnd = false;
+            plat.userData.isDisappearing = false;
+            plat.userData.disappearTimer = null;
+            plat.userData.disappearStartTimer = null;
+            plat.userData.inDisappearAnim = false;
+            disappearingPlatforms.push(plat);
+        }
+
+        const normalZ = START_Z - (PLATFORM_COUNT_DISAPPEAR + 1) * PLATFORM_SPACING;
+        const normalPlat = createPlatform(0, PLATFORM_Y, normalZ, 8, PLATFORM_HEIGHT, 8, 0x4caf50);
+        normalPlat.userData.isStart = false;
+        normalPlat.userData.isEnd = false;
+        normalPlat.userData.isDisappearing = false;
+        createSign(0, PLATFORM_Y, normalZ - 3, '太棒了！接下来，', '前进到终点吧');
+
+        for (let i = 0; i < 3; i++) {
+            const z = normalZ - (i + 1) * PLATFORM_SPACING;
+            const plat = createPlatform(0, PLATFORM_Y, z, 3.5, PLATFORM_HEIGHT, 3.5, 0x2196f3);
+            plat.userData.isStart = false;
+            plat.userData.isEnd = false;
+            plat.userData.isDisappearing = false;
+            plat.userData.isMoving = true;
+            plat.userData.noFollow = false;
+            plat.userData.moveSpeed = 4 + i * 1.5;
+            plat.userData.moveRange = 3 + i * 1;
+            plat.userData.baseX = 0;
+            plat.userData.moveDir = (i % 2 === 0) ? 1 : -1;
+            movingPlatforms.push(plat);
+        }
+
+        const endZ = normalZ - 4 * PLATFORM_SPACING;
+        const endPlat = createPlatform(0, PLATFORM_Y, endZ, 15, PLATFORM_HEIGHT, 15, 0xffd700);
+        endPlat.userData.isStart = false;
+        endPlat.userData.isEnd = true;
+        endPlat.userData.isDisappearing = false;
+        blackHoleLv2 = createBlackHole(0, PLATFORM_Y, endZ);
+
+        // ---------- 第三关 ----------
+        const THIRD_Z = -420;
+        createPlatform(0, 0, THIRD_Z, 15, 1, 15, 0x4caf50);
+        createCenteredSign(0, 0, THIRD_Z - 2, '向上攀爬', '触碰黑洞');
+
+        const boardWidth = 4;
+        const boardDepth = 3;
+        const boardHeight = 0.3;
+        const boardColor = 0x2196f3;
+        const startY = 1.5;
+        const stepHeight = 4;
+        const boardCount = 6;
+        const wallZ = THIRD_Z - 8;
+
+        let highestBoardPos = null;
+        for (let i = 0; i < boardCount; i++) {
+            const side = (i % 2 === 0) ? -1 : 1;
+            const xOffset = side * 2.0;
+            const yPos = startY + i * stepHeight;
+            const zPos = wallZ + side * 0.3;
+            const board = createPlatform(xOffset, yPos, zPos, boardWidth, boardHeight, boardDepth, boardColor);
+            board.userData.isBoard = true;
+            if (i === boardCount - 1) {
+                highestBoardPos = { x: xOffset, y: yPos, z: zPos };
+            }
+        }
+        if (highestBoardPos) {
+            blackHoleLv3 = createBlackHole(highestBoardPos.x, highestBoardPos.y, highestBoardPos.z);
+        }
+
+        // ---------- 第四关 ----------
+        const FOURTH_Z = -650;
+        createPlatform(0, 0, FOURTH_Z, 20, 1, 20, 0x4caf50);
+        createCenteredSign(0, 0, FOURTH_Z - 2, '第四关', '敬请期待');
+
+        // ---------- 状态更新 ----------
+        function updateStatus() {
+            let text = '';
+            if (inLevel4) text = '第四关：1 / 1';
+            else if (inLevel3) {
+                const total = 1 + boardCount;
+                const bottom = camera.position.y - PLAYER_HEIGHT;
+                const baseY = 0.5;
+                let level = 0;
+                if (bottom >= baseY) {
+                    const diff = bottom - baseY;
+                    const steps = Math.floor(diff / stepHeight) + 1;
+                    level = Math.min(steps, total);
+                }
+                level = Math.max(0, level);
+                text = `第三关：${level} / ${total}`;
+            } else if (inLevel2) {
+                const total = 13;
+                const progress = (START_Z - camera.position.z) / PLATFORM_SPACING;
+                const prog = Math.max(0, Math.min(total, Math.floor(progress)));
+                text = `第二关：${prog} / ${total}`;
+            } else {
+                const total = 6;
+                const prog = Math.max(0, Math.min(total, Math.floor((0 - camera.position.z) / 12)));
+                text = `第一关：${prog} / ${total}`;
+            }
+            statusEl.textContent = text;
+        }
+
+        // ---------- 加载存档 ----------
+        if (!loadGameData()) {
+            camera.position.copy(spawnLv1);
+        }
+        camera.lookAt(0, 0, -30);
+        updateStatus();
+
+        // ---------- 物理参数 ----------
+        const keys = {};
+        const PLAYER_RADIUS = 0.35;
+        const PLAYER_HEIGHT = 1.6;
+
+        let velocityY = 0;
+        let isOnGround = false;
+        let currentGroundPlatform = null;
+
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        // ---------- 触控变量 ----------
+        let joystickTouchId = null;
+        let joystickX = 0, joystickY = 0;
+        let pitch = 0, yaw = 0;
+        let lastTouchX = 0, lastTouchY = 0;
+        let isDragging = false;
+
+        function updateJoystick(clientX, clientY) {
+            const rect = joystickArea.getBoundingClientRect();
+            const cx = rect.left + rect.width/2;
+            const cy = rect.top + rect.height/2;
+            const maxR = rect.width/2 - 20;
+            let dx = clientX - cx;
+            let dy = clientY - cy;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > maxR) { dx = dx/dist * maxR; dy = dy/dist * maxR; }
+            joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            const norm = Math.max(1, Math.sqrt(dx*dx + dy*dy) / maxR);
+            joystickX = dx / (maxR * norm);
+            joystickY = dy / (maxR * norm);
+            if (dist < 10) { joystickX = 0; joystickY = 0; }
+        }
+
+        function resetJoystick() {
+            joystickKnob.style.transform = 'translate(0px, 0px)';
+            joystickX = 0; joystickY = 0;
+            joystickTouchId = null;
+        }
+
+        // ---------- 触控事件 ----------
+        function handleTouchStart(e) {
+            e.preventDefault();
+            if (!isTouchDevice) return;
+            tip.classList.add('hidden');
+            const touch = e.changedTouches[0];
+            const rect = joystickArea.getBoundingClientRect();
+            const inJoystick = touch.clientX >= rect.left - 30 && touch.clientX <= rect.right + 30 &&
+                               touch.clientY >= rect.top - 30 && touch.clientY <= rect.bottom + 30;
+            if (inJoystick && joystickTouchId === null) {
+                joystickTouchId = touch.identifier;
+                updateJoystick(touch.clientX, touch.clientY);
+            } else {
+                isDragging = true;
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (!isTouchDevice) return;
+            for (const touch of e.changedTouches) {
+                if (touch.identifier === joystickTouchId) {
+                    updateJoystick(touch.clientX, touch.clientY);
+                } else if (isDragging) {
+                    const deltaX = touch.clientX - lastTouchX;
+                    const deltaY = touch.clientY - lastTouchY;
+                    lastTouchX = touch.clientX;
+                    lastTouchY = touch.clientY;
+                    yaw -= deltaX * 0.005;
+                    pitch -= deltaY * 0.005;
+                    pitch = Math.max(-Math.PI/2 + 0.01, Math.min(Math.PI/2 - 0.01, pitch));
+                    const euler = new THREE.Euler(pitch, yaw, 0, 'YXZ');
+                    camera.quaternion.setFromEuler(euler);
+                }
+            }
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            for (const touch of e.changedTouches) {
+                if (touch.identifier === joystickTouchId) resetJoystick();
+            }
+            isDragging = false;
+            if (e.touches.length === 0) resetJoystick();
+        }
+
+        function handleTouchCancel(e) {
+            resetJoystick();
+            isDragging = false;
+        }
+
+        if (isTouchDevice) {
+            document.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd, { passive: false });
+            document.addEventListener('touchcancel', handleTouchCancel, { passive: false });
+            joystickArea.style.display = 'block';
+            jumpBtn.style.display = 'flex';
+            tip.classList.remove('hidden');
+            setTimeout(() => tip.classList.add('hidden'), 3000);
+            camera.position.set(0, 2.1, 5);
+            const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+            camera.quaternion.setFromEuler(euler);
+            pitch = 0; yaw = 0;
+            updateStatus();
+        }
+
+        // ---------- 跳跃按钮 ----------
+        jumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (isOnGround) {
+                const jumpForce = inLevel3 ? JUMP_FORCE_LV3 : JUMP_FORCE_BASE;
+                velocityY = jumpForce;
+                isOnGround = false;
+                currentGroundPlatform = null;
+            }
+        });
+        jumpBtn.addEventListener('mousedown', () => {
+            if (isOnGround) {
+                const jumpForce = inLevel3 ? JUMP_FORCE_LV3 : JUMP_FORCE_BASE;
+                velocityY = jumpForce;
+                isOnGround = false;
+                currentGroundPlatform = null;
+            }
+        });
+
+        // ================================================================
+        // ★★★ 平台消失动画（缩放+颜色+透明度）★★★
+        // ================================================================
+        function triggerDisappear(plat) {
+            if (plat.userData.inDisappearAnim) return;
+            // 清除可能的延迟开始定时器
+            if (plat.userData.disappearStartTimer) {
+                clearTimeout(plat.userData.disappearStartTimer);
+                plat.userData.disappearStartTimer = null;
+            }
+            // 如果已消失或正在动画，则返回
+            if (plat.userData.isDisappearing && plat.userData.inDisappearAnim) return;
+            plat.userData.isDisappearing = true;
+            plat.userData.inDisappearAnim = true;
+
+            // 如果动画时长为0，立即隐藏
+            if (DISAPPEAR_ANIM_DURATION === 0) {
+                plat.visible = false;
+                plat.userData.inDisappearAnim = false;
+                return;
+            }
+
+            const duration = DISAPPEAR_ANIM_DURATION;
+            const startTime = performance.now();
+            const material = plat.material;
+            const origColor = new THREE.Color(plat.userData.origColor || 0x2196f3);
+            const targetColor = new THREE.Color(0xff3333);
+
+            material.transparent = true;
+            material.opacity = 1;
+
+            function animateStep() {
+                const elapsed = performance.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 2.5);
+
+                const scale = 1 - eased * 0.9;
+                plat.scale.set(scale, 1, scale);
+
+                const color = origColor.clone().lerp(targetColor, eased);
+                material.color.copy(color);
+
+                material.opacity = 1 - eased;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateStep);
+                } else {
+                    plat.visible = false;
+                    plat.userData.inDisappearAnim = false;
+                    material.opacity = 1;
+                    plat.scale.set(1, 1, 1);
+                }
+            }
+            animateStep();
+        }
+
+        // ---------- 碰撞检测 ----------
+        function checkPlatformCollision() {
+            const bottom = camera.position.y - PLAYER_HEIGHT;
+            const top = camera.position.y;
+            let landed = false;
+            currentGroundPlatform = null;
+
+            for (const plat of platforms) {
+                const p = plat.userData;
+                if (p.isFake) continue;
+                if (!plat.visible) continue;
+
+                const inX = camera.position.x >= p.minX - PLAYER_RADIUS && camera.position.x <= p.maxX + PLAYER_RADIUS;
+                const inZ = camera.position.z >= p.minZ - PLAYER_RADIUS && camera.position.z <= p.maxZ + PLAYER_RADIUS;
+                if (!inX || !inZ) continue;
+
+                // ★★★ 第二关消失触发（延迟开始） ★★★
+                if (inLevel2 && !p.isStart && !p.isEnd && !p.isDisappearing && disappearingPlatforms.includes(plat)) {
+                    if (bottom <= p.topY && bottom >= p.topY - 2.0) {
+                        // 标记为已触发，防止重复设置定时器
+                        p.isDisappearing = true;
+                        // 清除已有定时器
+                        if (p.disappearStartTimer) {
+                            clearTimeout(p.disappearStartTimer);
+                            p.disappearStartTimer = null;
+                        }
+                        // 延迟后开始消失动画
+                        p.disappearStartTimer = setTimeout(() => {
+                            triggerDisappear(plat);
+                        }, DISAPPEAR_START_DELAY);
+                    }
+                }
+
+                // 碰撞响应（站立）
+                const overlapY = bottom < p.topY && top > p.bottomY;
+                if (overlapY) {
+                    camera.position.y = p.topY + PLAYER_HEIGHT;
+                    velocityY = 0;
+                    landed = true;
+                    currentGroundPlatform = plat;
+                    break;
+                }
+                // 如果未重叠，但脚底在平台顶部附近且速度向下，也站立
+                if (velocityY <= 0 && bottom <= p.topY && bottom >= p.topY - 2.0) {
+                    camera.position.y = p.topY + PLAYER_HEIGHT;
+                    velocityY = 0;
+                    landed = true;
+                    currentGroundPlatform = plat;
+                    break;
+                }
+            }
+            isOnGround = landed;
+        }
+
+        // ---------- 黑洞传送 ----------
+        function checkTeleport() {
+            if (hasTeleported) return;
+            // 第一关 -> 第二关
+            if (!inLevel2 && !inLevel3 && !inLevel4 && blackHoleLv1) {
+                const dx = camera.position.x - blackHoleLv1.userData.x;
+                const dz = camera.position.z - blackHoleLv1.userData.z;
+                if (Math.sqrt(dx*dx + dz*dz) < blackHoleLv1.userData.radius) {
+                    hasTeleported = true;
+                    inLevel2 = true; inLevel3 = false; inLevel4 = false;
+                    camera.position.copy(spawnLv2);
+                    velocityY = 0;
+                    resetLevel2();
+                    updateStatus();
+                    setTimeout(() => { hasTeleported = false; }, 1500);
+                    return;
+                }
+            }
+            // 第二关 -> 第三关
+            if (inLevel2 && !inLevel3 && !inLevel4 && blackHoleLv2) {
+                const dx = camera.position.x - blackHoleLv2.userData.x;
+                const dz = camera.position.z - blackHoleLv2.userData.z;
+                if (Math.sqrt(dx*dx + dz*dz) < blackHoleLv2.userData.radius) {
+                    hasTeleported = true;
+                    inLevel2 = false; inLevel3 = true; inLevel4 = false;
+                    camera.position.copy(spawnLv3);
+                    velocityY = 0;
+                    resetLevel2();
+                    updateStatus();
+                    setTimeout(() => { hasTeleported = false; }, 1500);
+                    return;
+                }
+            }
+            // 第三关 -> 第四关
+            if (inLevel3 && !inLevel4 && blackHoleLv3) {
+                const dx = camera.position.x - blackHoleLv3.userData.x;
+                const dz = camera.position.z - blackHoleLv3.userData.z;
+                const dist2D = Math.sqrt(dx*dx + dz*dz);
+                const playerBottom = camera.position.y - PLAYER_HEIGHT;
+                const platformTop = blackHoleLv3.userData.platformTopY;
+                const verticalDist = Math.abs(playerBottom - platformTop);
+                if (dist2D < blackHoleLv3.userData.radius && verticalDist < 1.5) {
+                    hasTeleported = true;
+                    inLevel2 = false; inLevel3 = false; inLevel4 = true;
+                    camera.position.copy(spawnLv4);
+                    velocityY = 0;
+                    updateStatus();
+                    showLevel4Win();
+                    setTimeout(() => { hasTeleported = false; }, 1500);
+                    return;
+                }
+            }
+        }
+
+        // ---------- 更新移动平台 ----------
+        function updateMovingPlatforms(delta) {
+            for (const plat of movingPlatforms) {
+                if (!plat) continue;
+                const data = plat.userData;
+                if (!data.isMoving) continue;
+                const prevX = plat.position.x;
+                let newX = plat.position.x + data.moveSpeed * data.moveDir * delta;
+                if (newX > data.baseX + data.moveRange) { newX = data.baseX + data.moveRange; data.moveDir = -1; }
+                else if (newX < data.baseX - data.moveRange) { newX = data.baseX - data.moveRange; data.moveDir = 1; }
+                plat.position.x = newX;
+                data.minX = newX - data.width/2;
+                data.maxX = newX + data.width/2;
+                if (currentGroundPlatform === plat && !data.noFollow) {
+                    camera.position.x += (newX - prevX);
+                }
+            }
+        }
+
+        // ---------- 重置第二关 ----------
+        function resetLevel2() {
+            for (const plat of disappearingPlatforms) {
+                // 清除延迟定时器
+                if (plat.userData.disappearStartTimer) {
+                    clearTimeout(plat.userData.disappearStartTimer);
+                    plat.userData.disappearStartTimer = null;
+                }
+                plat.visible = true;
+                plat.userData.isDisappearing = false;
+                plat.userData.inDisappearAnim = false;
+                plat.scale.set(1, 1, 1);
+                plat.material.color.setHex(plat.userData.origColor);
+                plat.material.opacity = 1;
+                if (plat.userData.disappearTimer) {
+                    clearTimeout(plat.userData.disappearTimer);
+                    plat.userData.disappearTimer = null;
+                }
+            }
+            for (const plat of movingPlatforms) {
+                if (plat.userData.noFollow) {
+                    plat.position.x = plat.userData.baseX;
+                    plat.userData.minX = plat.position.x - plat.userData.width/2;
+                    plat.userData.maxX = plat.position.x + plat.userData.width/2;
+                }
+            }
+        }
+
+        // ---------- 第四关胜利 ----------
+        function showLevel4Win() {
+            completionBox.textContent = '🎉 恭喜通关！';
+            completionBox.classList.remove('hidden');
+            if (winTimeout) clearTimeout(winTimeout);
+            winTimeout = setTimeout(() => {
+                completionBox.classList.add('hidden');
+                winTimeout = null;
+            }, 3000);
+        }
+
+        // ---------- 主更新 ----------
+        function updateMovement(delta) {
+            if (isTouchDevice) {
+                const forward = -joystickY;
+                const right = -joystickX;
+                const dist = MOVE_SPEED * delta;
+                if (Math.abs(forward) > 0.1 || Math.abs(right) > 0.1) {
+                    const dir = new THREE.Vector3();
+                    camera.getWorldDirection(dir);
+                    dir.y = 0;
+                    if (dir.lengthSq() < 0.001) dir.set(0, 0, -1);
+                    else dir.normalize();
+                    const rightVec = new THREE.Vector3();
+                    rightVec.crossVectors(new THREE.Vector3(0, 1, 0), dir).normalize();
+                    if (rightVec.lengthSq() < 0.001) rightVec.set(1, 0, 0);
+                    const moveVec = new THREE.Vector3()
+                        .addScaledVector(dir, forward)
+                        .addScaledVector(rightVec, right)
+                        .normalize()
+                        .multiplyScalar(dist);
+                    camera.position.add(moveVec);
+                }
+            } else {
+                if (controls.isLocked) {
+                    const dist = MOVE_SPEED * delta;
+                    if (keys['KeyW']) controls.moveForward(dist);
+                    if (keys['KeyS']) controls.moveForward(-dist);
+                    if (keys['KeyD']) controls.moveRight(dist);
+                    if (keys['KeyA']) controls.moveRight(-dist);
+                    if (keys['Space'] && isOnGround) {
+                        const jumpForce = inLevel3 ? JUMP_FORCE_LV3 : JUMP_FORCE_BASE;
+                        velocityY = jumpForce;
+                        isOnGround = false;
+                        currentGroundPlatform = null;
+                    }
+                }
+            }
+
+            velocityY -= GRAVITY * delta;
+            camera.position.y += velocityY * delta;
+
+            checkPlatformCollision();
+            updateMovingPlatforms(delta);
+            checkTeleport();
+
+            if (camera.position.y < -20) {
+                if (inLevel4) camera.position.copy(spawnLv4);
+                else if (inLevel3) camera.position.copy(spawnLv3);
+                else if (inLevel2) { camera.position.copy(spawnLv2); resetLevel2(); }
+                else { camera.position.copy(spawnLv1); resetDualPlatforms(); }
+                velocityY = 0;
+                currentGroundPlatform = null;
+                hasTeleported = false;
+                updateStatus();
+            }
+
+            updateStatus();
+        }
+
+        // ---------- 窗口自适应 ----------
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ---------- 渲染循环 ----------
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+            updateMovement(delta);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        if (isTouchDevice) {
+            tip.textContent = '《虚空跃途》\n左下摇杆移动 · 屏幕拖动视角 · 右下跳跃';
+            tip.classList.remove('hidden');
+            setTimeout(() => tip.classList.add('hidden'), 3000);
+        }
+
+        console.log(`🎮 虚空跃途 · 优化完成 (MOVE_SPEED=${MOVE_SPEED}, JUMP_FORCE_BASE=${JUMP_FORCE_BASE}, JUMP_FORCE_LV3=${JUMP_FORCE_LV3}, 消失延迟=${DISAPPEAR_START_DELAY}ms, 动画时长=${DISAPPEAR_ANIM_DURATION}ms)`);
+    </script>
+</body>
+</html>

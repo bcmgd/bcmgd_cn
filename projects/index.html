@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目作品 | 编程猫怪盗の小站</title>
+<link rel="icon" href="../me.webp" type="image/webp">
+<style>
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: system-ui, "微软雅黑", sans-serif;
+}
+html{
+    scroll-behavior: smooth;
+}
+body{
+    background-color: #040406;
+    color: #e6e6f0;
+}
+/* 滚动动画 */
+.scroll-animate{
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.scroll-animate.active{
+    opacity: 1;
+    transform: translateY(0);
+}
+/* 导航栏（同步添加汉堡菜单，统一页面） */
+nav{
+    width: 100%;
+    position: fixed;
+    top: 0;
+    padding: 20px 6%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(14px);
+    background: rgba(4,4,6,0.85);
+    border-bottom: 1px solid #12121a;
+    z-index: 999;
+}
+.logo{
+    font-size: 24px;
+    font-weight: bold;
+    background: linear-gradient(90deg,#60a5fa,#c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transition: filter 0.3s ease;
+}
+.logo:hover{
+    filter: drop-shadow(0 0 8px rgba(192,132,252,0.4));
+}
+.nav-menu{
+    display: flex;
+    gap: 28px;
+}
+.nav-menu a{
+    color: #a0a0c2;
+    text-decoration: none;
+    font-size: 15px;
+    transition: 0.3s;
+}
+.nav-menu a:hover{
+    color: #c084fc;
+}
+.hamburger{
+    display: none;
+    font-size: 28px;
+    color: #e6e6f0;
+    cursor: pointer;
+}
+/* 主体容器 */
+main{
+    padding-top: 140px;
+    padding-bottom: 100px;
+    padding-left: 6%;
+    padding-right: 6%;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+.page-title{
+    text-align: center;
+    margin-bottom: 60px;
+}
+.page-title h2{
+    font-size: 36px;
+    margin-bottom: 12px;
+}
+.page-title h2 span{
+    background: linear-gradient(90deg,#60a5fa,#c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.page-title p{
+    color: #707090;
+    font-size: 15px;
+}
+/* 项目卡片网格布局 */
+.project-box{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 26px;
+    align-items: stretch;
+    grid-auto-flow: row;
+}
+/* 卡片容器 */
+.project-card{
+    background: #0d0d14;
+    border: 1px solid #181826;
+    border-radius: 16px;
+    padding: 32px 26px;
+    height: 100%;
+    transition: 0.3s;
+}
+.project-card:hover{
+    border-color: #c084fc;
+    transform: translateY(-6px);
+}
+.project-card h4{
+    font-size: 22px;
+    margin-bottom: 10px;
+    color:#e6e6f0;
+}
+.project-card .domain{
+    color: #60a5fa;
+    font-size: 15px;
+}
+.project-card p{
+    margin-top: 12px;
+    color: #8282a3;
+    line-height: 1.7;
+    font-size: 14px;
+}
+.download-btn{
+    display: inline-block;
+    margin-top: 14px;
+    padding: 8px 20px;
+    border: 1px solid #60a5fa;
+    border-radius: 99px;
+    color: #c084fc;
+    text-decoration: none;
+    font-size: 14px;
+    transition:0.3s;
+}
+.download-btn:hover{
+    background: rgba(96,165,250,0.08);
+}
+/* 返回按钮容器，独占整行 */
+.back-home-wrap{
+    grid-column: 1 / -1;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 50px;
+}
+.back-home{
+    text-decoration: none;
+    padding: 12px 30px;
+    border: 1px solid #60a5fa;
+    color: #c084fc;
+    border-radius: 999px;
+    transition: 0.3s;
+}
+.back-home:hover{
+    background: rgba(96,165,250,0.08);
+    transform: translateY(-3px);
+}
+/* 页脚 */
+footer{
+    text-align: center;
+    padding: 30px;
+    border-top: 1px solid #12121a;
+    color: #505070;
+    font-size:14px;
+}
+/* 手机端适配 */
+@media (max-width:768px){
+    .nav-menu{
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: rgba(4,4,6,0.95);
+        flex-direction: column;
+        padding: 20px 6%;
+        gap: 16px;
+        display: none;
+    }
+    .nav-menu.show{
+        display: flex;
+    }
+    .hamburger{
+        display: block;
+    }
+    .project-box{
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+</head>
+<body>
+<!-- 导航栏 -->
+<nav>
+    <div class="logo">编程猫怪盗の小站</div>
+    <div class="nav-menu">
+        <a href="../index.html">首页</a>
+        <a href="./index.html">项目作品</a>
+        <a href="../friends/index.html">友情链接</a>
+    </div>
+    <div class="hamburger" id="menuBtn">≡</div>
+</nav>
+
+<main>
+    <div class="page-title scroll-animate">
+        <h2>全部<span>项目作品</span></h2>
+        <p>下载压缩包，内含单文件便携EXE，解压直接运行无需安装</p>
+    </div>
+
+    <div class="project-box">
+        <!-- 1. 消灭豆包 3D射击游戏
+        <div class="project-card scroll-animate">
+            <h4>消灭豆包 3D射击游戏</h4>
+            <div class="domain">xmdb.html</div>
+            <p>PC端3D射击小游戏，操控角色射击目标，纯键盘操作，网页直接游玩。</p>
+            <a href="./xmdb.html" target="_blank" class="download-btn">前往游玩页面</a>
+        </div> -->
+        <!-- 2. 虚空跃途 3D平台跳跃游戏 -->
+        <div class="project-card scroll-animate">
+            <h4>虚空跃途 3D平台跳跃游戏</h4>
+            <div class="domain">xkyt.html</div>
+            <p>PC端手机端都兼容的3D平台跳跃游戏，穿梭虚空黑洞进行关卡传送，多层随机真假跳跃平台，本地存档持久保存进度，电脑移动双支持。</p>
+            <a href="./xkyt.html" target="_blank" class="download-btn">前往游玩页面</a>
+        </div>
+        <!-- 3. 中文命令行 cn‑cil -->
+        <div class="project-card scroll-animate">
+            <h4>中文命令行 cn‑cil</h4>
+            <div class="domain">中文命令行.zip</div>
+            <p>自研中文命令行工具，用中文指令代替传统英文命令，降低编程入门门槛，压缩包内含便携exe程序。</p>
+            <a href="./download/中文命令行2.1.0.zip" target="_blank" class="download-btn">下载压缩包</a>
+        </div>
+
+        <!-- 返回首页按钮 -->
+        <div class="back-home-wrap">
+            <a href="../index.html" class="back-home">← 返回我的主页</a>
+        </div>
+    </div>
+</main>
+
+<!-- 页脚 -->
+<footer>
+© 2026 编程猫怪盗の小站 | 项目作品页面
+</footer>
+
+<script>
+// 汉堡菜单切换
+const menuBtn = document.getElementById('menuBtn');
+const navMenu = document.querySelector('.nav-menu');
+menuBtn.addEventListener('click', ()=>{
+    navMenu.classList.toggle('show');
+})
+// 滚动动画
+const animateItems = document.querySelectorAll('.scroll-animate');
+window.addEventListener('scroll', () => {
+    animateItems.forEach(item => {
+        const itemTop = item.getBoundingClientRect().top;
+        const triggerPoint = window.innerHeight * 0.85;
+        if(itemTop < triggerPoint){
+            item.classList.add('active');
+        }
+    })
+})
+window.dispatchEvent(new Event('scroll'));
+</script>
+</body>
+</html>
